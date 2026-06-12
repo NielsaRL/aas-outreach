@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+
+# Media uploads
+media/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# OS files
+Thumbs.db
+.DS_Store
