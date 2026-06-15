@@ -4,7 +4,12 @@ from .services.targets import suggest_targets_for_event
 from .services.weather import update_weather_for_event
 from django.contrib import messages
 from django.utils.html import format_html
-from .models import Partner, Volunteer, ScheduledEvent, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun
+from django.urls import path
+from django.shortcuts import render
+from django.utils.dateparse import parse_date
+from datetime import date, timedelta
+import calendar
+from .models import EventChecklist, Partner, Volunteer, ScheduledEvent, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem
 
 class EventVolunteerInlineForm(forms.ModelForm):
     class Meta:
@@ -74,6 +79,39 @@ class EventTargetInline(admin.TabularInline):
         "visible_end_time",
     )
 
+class EventChecklistItemInlineForm(forms.ModelForm):
+    class Meta:
+        model = EventChecklistItem
+        fields = "__all__"
+
+        widgets = {
+            "notes": forms.Textarea(
+                attrs={
+                    "rows": 1,
+                    "cols": 40,
+                }
+            ),
+        }
+class EventChecklistItemInline(admin.TabularInline):
+    model = EventChecklistItem
+    form = EventChecklistItemInlineForm
+    extra = 0
+    show_change_link = False
+
+    fields = (
+        "title",
+        "due_date",
+        "status",
+        "cancellation_item",
+        "notes",
+    )
+
+    readonly_fields = (
+        "title",
+        "due_date",
+        "cancellation_item",
+    )
+
 @admin.register(Partner)
 class PartnerAdmin(admin.ModelAdmin):
     list_display = (
@@ -127,12 +165,14 @@ class VolunteerAdmin(admin.ModelAdmin):
         "email",
         "phone",
         "host_trained",
+        "outreach_committee",
         "cleared_by_pfsp",
         "active",
     )
 
     list_filter = (
         "host_trained",
+        "outreach_committee",
         "cleared_by_pfsp",
         "active",
     )
@@ -259,6 +299,70 @@ class ScheduledEventAdmin(admin.ModelAdmin):
         )
 
     night_sky_chart_link.short_description = "Sky Chart"
+    change_list_template = "admin/outreach/scheduledevent/change_list.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "calendar/",
+                self.admin_site.admin_view(self.calendar_view),
+                name="outreach_scheduledevent_calendar",
+            ),
+        ]
+        return custom_urls + urls
+
+    def calendar_view(self, request):
+        today = date.today()
+        year = int(request.GET.get("year", today.year))
+        month = int(request.GET.get("month", today.month))
+
+        first_day = date(year, month, 1)
+        last_day = date(year, month, calendar.monthrange(year, month)[1])
+
+        events = ScheduledEvent.objects.filter(
+            event_date__gte=first_day,
+            event_date__lte=last_day,
+        ).order_by("event_date", "start_time")
+
+        events_by_day = {}
+        for event in events:
+            events_by_day.setdefault(event.event_date.day, []).append(event)
+
+        cal = calendar.Calendar(firstweekday=6)
+        weeks = cal.monthdayscalendar(year, month)
+
+        previous_month = month - 1
+        previous_year = year
+        if previous_month == 0:
+            previous_month = 12
+            previous_year -= 1
+
+        next_month = month + 1
+        next_year = year
+        if next_month == 13:
+            next_month = 1
+            next_year += 1
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Scheduled Events Calendar",
+            "year": year,
+            "month": month,
+            "month_name": calendar.month_name[month],
+            "weeks": weeks,
+            "events_by_day": events_by_day,
+            "previous_year": previous_year,
+            "previous_month": previous_month,
+            "next_year": next_year,
+            "next_month": next_month,
+        }
+
+        return render(
+            request,
+            "admin/outreach/scheduledevent/calendar.html",
+            context,
+        )
 
 @admin.register(AstronomicalTarget)
 class AstronomicalTargetAdmin(admin.ModelAdmin):
@@ -395,3 +499,43 @@ class SchedulerRunAdmin(admin.ModelAdmin):
     readonly_fields = (
         "created_at",
     )
+
+@admin.register(EventChecklist)
+class EventChecklistAdmin(admin.ModelAdmin):
+    list_display = (
+        "event_name",
+        "event_date",
+        "partner",
+        "status",
+        "checklist_progress",
+    )
+
+    fields = (
+        "event_name",
+        "event_date",
+        "partner",
+        "status",
+    )
+
+    readonly_fields = (
+        "event_name",
+        "event_date",
+        "partner",
+        "status",
+    )
+
+    inlines = [EventChecklistItemInline]
+
+    def checklist_progress(self, obj):
+        total = obj.checklist_items.count()
+
+        if total == 0:
+            return "No checklist"
+
+        complete = obj.checklist_items.filter(
+            status__in=["DONE", "NA"]
+        ).count()
+
+        return f"{complete}/{total} complete"
+
+    checklist_progress.short_description = "Checklist Progress"

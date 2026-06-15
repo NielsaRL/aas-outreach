@@ -193,6 +193,11 @@ class Volunteer(models.Model):
     help_text="Check if this volunteer is trained to host events."
     )
 
+    outreach_committee = models.BooleanField(
+        default=False,
+        help_text="Member of the AAS Outreach Committee"
+    )
+    
     cleared_by_pfsp = models.BooleanField(
         default=False,
         help_text="Check if this volunteer is cleared by PFSP."
@@ -379,12 +384,28 @@ class ScheduledEvent(models.Model):
 
         super().save(*args, **kwargs)
 
+        from outreach.services.checklists import (
+            create_checklist_items_for_event,
+            create_cancellation_checklist_items_for_event,
+        )
+
+        create_checklist_items_for_event(self)
+
+        if self.status == "CANCELLED":
+            create_cancellation_checklist_items_for_event(self)
+
         if self.status == "CONFIRMED":
             EventLog.objects.get_or_create(event=self)
 
     def __str__(self):
         return self.event_name
-    
+
+class EventChecklist(ScheduledEvent):
+    class Meta:
+        proxy = True
+        verbose_name = "Event Checklist"
+        verbose_name_plural = "Event Checklists"
+
 class EventVolunteer(models.Model):
 
     ROLE_CHOICES = [
@@ -646,3 +667,57 @@ class SchedulerRun(models.Model):
 
     def __str__(self):
         return f"Scheduler Run: {self.start_date} to {self.end_date}"
+
+class EventChecklistItem(models.Model):
+    STATUS_CHOICES = [
+        ("TODO", "To Do"),
+        ("DONE", "Completed"),
+        ("NA", "Not Applicable"),
+    ]
+
+    event = models.ForeignKey(
+        ScheduledEvent,
+        on_delete=models.CASCADE,
+        related_name="checklist_items",
+    )
+
+    title = models.CharField(max_length=200)
+
+    description = models.TextField(blank=True)
+
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    days_before_event = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Example: 10 means due 10 days before the event.",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="TODO",
+    )
+
+    cancellation_item = models.BooleanField(
+        default=False,
+        help_text="Checked if this item was added because the event was cancelled.",
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["due_date", "days_before_event", "title"]
+
+    def __str__(self):
+        return f"{self.event.event_name} - {self.title}"

@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load calendar_extras %}
+{% block content %}
+
+<h1>{{ month_name }} {{ year }}</h1>
+
+<p>
+  <a class="button" href="?year={{ previous_year }}&month={{ previous_month }}">Previous Month</a>
+  <a class="button" href="?year={{ next_year }}&month={{ next_month }}">Next Month</a>
+  <a class="button" href="../">Back to Scheduled Events</a>
+</p>
+
+<table style="width: 100%; border-collapse: collapse;">
+  <thead>
+    <tr>
+      <th>Sun</th>
+      <th>Mon</th>
+      <th>Tue</th>
+      <th>Wed</th>
+      <th>Thu</th>
+      <th>Fri</th>
+      <th>Sat</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for week in weeks %}
+      <tr>
+        {% for day in week %}
+          <td style="vertical-align: top; width: 14%; height: 120px; border: 1px solid #ccc; padding: 6px;">
+            {% if day %}
+              <strong>{{ day }}</strong>
+
+              {% for event in events_by_day|get_item:day %}
+                <div style="margin-top: 6px; padding: 4px; border: 1px solid #999; border-radius: 4px;">
+                  <strong>{{ event.start_time|time:"g:i A" }}</strong><br>
+                  {{ event.event_name }}<br>
+                  <small>{{ event.partner }}</small>
+                </div>
+              {% endfor %}
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
