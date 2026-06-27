@@ -1,0 +1,31 @@
+{% extends "outreach/base_public.html" %}
+
+{% block title %}Create Volunteer Account{% endblock %}
+
+{% block content %}
+<main class="container my-5">
+    <div class="auth-card mx-auto">
+        <p class="eyebrow text-muted">Volunteer Access</p>
+        <h1>Create Volunteer Account</h1>
+        <p class="text-muted">
+            Create an account to sign up for outreach events and manage your volunteer information.
+        </p>
+
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            {{ form.as_p }}
+
+            <button type="submit" class="btn btn-aas-gold w-100">
+                Create Account
+            </button>
+        </form>
+
+        <hr>
+
+        <p class="mb-0">
+            Already have an account?
+            <a href="{% url 'login' %}">Sign in here.</a>
+        </p>
+    </div>
+</main>
+{% endblock %}

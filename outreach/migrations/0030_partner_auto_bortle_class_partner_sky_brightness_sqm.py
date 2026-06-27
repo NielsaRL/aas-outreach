@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='partner',
             name='sky_brightness_sqm',
-            field=models.FloatField(blank=True, editable=False, help_text='Estimated sky brightness in mag/arcsec².', null=True),
+            field=models.FloatField(blank=True, editable=True, help_text='Estimated sky brightness in mag/arcsec².', null=True),
         ),
     ]

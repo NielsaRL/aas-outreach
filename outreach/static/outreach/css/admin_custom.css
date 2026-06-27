@@ -1,0 +1,62 @@
+:root {
+    --primary: #071527;
+    --secondary: #163B6D;
+    --accent: #D8A43A;
+    --primary-fg: #ffffff;
+}
+
+#header {
+    background: #071527;
+    color: white;
+    border-bottom: 4px solid #D8A43A;
+}
+
+#branding h1,
+#branding h1 a:link,
+#branding h1 a:visited {
+    color: white;
+}
+
+.aas-admin-branding {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.aas-admin-branding img {
+    height: 44px;
+    width: auto;
+}
+
+.aas-admin-branding h1 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.aas-admin-branding p {
+    margin: 2px 0 0;
+    color: #d1d5db;
+    font-size: 0.8rem;
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+    background: #163B6D;
+}
+
+.button,
+input[type=submit],
+input[type=button],
+.submit-row input,
+a.button {
+    background: #163B6D;
+}
+
+.button:hover,
+input[type=submit]:hover,
+input[type=button]:hover,
+.submit-row input:hover,
+a.button:hover {
+    background: #0B1F3A;
+}

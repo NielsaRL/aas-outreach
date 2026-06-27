@@ -1,0 +1,113 @@
+{% load static %}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}AAS Outreach{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'outreach/css/public.css' %}">
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg aas-navbar">
+
+    <div class="container">
+
+        <a class="navbar-brand d-flex align-items-center gap-3"
+           href="{% url 'public_home' %}">
+
+            <img src="{% static 'outreach/img/aas-logo.png' %}"
+                 alt="Austin Astronomical Society"
+                 class="aas-logo">
+
+            <span class="brand-text">
+                <span class="brand-main">
+                    Austin Astronomical Society
+                </span>
+
+                <span class="brand-sub">
+                    Outreach Portal
+                </span>
+            </span>
+
+        </a>
+
+        <button class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarNav">
+
+            <span class="navbar-toggler-icon"></span>
+
+        </button>
+
+        <div class="collapse navbar-collapse"
+             id="navbarNav">
+
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+
+                <li class="nav-item">
+                    <a class="nav-link"
+                       href="{% url 'public_home' %}#upcoming-events">
+                        Events
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link"
+                       href="#">
+                        Volunteer
+                    </a>
+                </li>
+
+                <li class="nav-item ms-lg-3">
+                    <a class="btn btn-sm btn-aas-outline"
+                       href="{% url 'login' %}">
+                        Portal Login
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</nav>
+
+{% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} mb-2">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+{% block content %}
+{% endblock %}
+
+<footer class="aas-footer mt-5">
+
+    <div class="container py-4 text-center">
+
+        <strong>Austin Astronomical Society Outreach</strong><br>
+
+        <small>
+            Bringing astronomy to Central Texas through public outreach.
+        </small>
+
+    </div>
+
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -2,6 +2,67 @@
 {% load calendar_extras %}
 {% block content %}
 
+<style>
+  .calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .calendar-table th {
+    padding: 8px;
+    background: #263238;
+    color: white;
+    text-align: center;
+  }
+
+  .calendar-table td {
+    vertical-align: top;
+    width: 14%;
+    height: 130px;
+    border: 1px solid #ccc;
+    padding: 6px;
+    background: #fafafa;
+  }
+
+  .calendar-day-number {
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+
+  .calendar-event {
+    margin-top: 6px;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    border-left: 5px solid #555;
+    background: #eef2f5;
+  }
+
+  .calendar-event-planned {
+    border-left-color: #1976d2;
+    background: #e3f2fd;
+  }
+
+  .calendar-event-confirmed {
+    border-left-color: #2e7d32;
+    background: #e8f5e9;
+  }
+
+  .calendar-event-completed {
+    border-left-color: #616161;
+    background: #eeeeee;
+  }
+
+  .calendar-event-cancelled {
+    border-left-color: #c62828;
+    background: #ffebee;
+  }
+
+  .calendar-event:hover {
+    filter: brightness(0.96);
+  }
+</style>
+
 <h1>{{ month_name }} {{ year }}</h1>
 
 <p>
@@ -10,7 +71,7 @@
   <a class="button" href="../">Back to Scheduled Events</a>
 </p>
 
-<table style="width: 100%; border-collapse: collapse;">
+<table class="calendar-table">
   <thead>
     <tr>
       <th>Sun</th>
@@ -29,14 +90,39 @@
         {% for day in week %}
           <td style="vertical-align: top; width: 14%; height: 120px; border: 1px solid #ccc; padding: 6px;">
             {% if day %}
-              <strong>{{ day }}</strong>
+              <div class="calendar-day-number">{{ day }}</div>
 
               {% for event in events_by_day|get_item:day %}
-                <div style="margin-top: 6px; padding: 4px; border: 1px solid #999; border-radius: 4px;">
-                  <strong>{{ event.start_time|time:"g:i A" }}</strong><br>
-                  {{ event.event_name }}<br>
-                  <small>{{ event.partner }}</small>
-                </div>
+                <a href="{{ event.admin_url }}" style="text-decoration: none; color: inherit;">
+                  <div class="calendar-event calendar-event-{{ event.status|lower }}">
+                    <strong>{{ event.start_time|time:"g:i A" }}</strong><br>
+                    {{ event.event_name }}<br>
+
+                    <small>
+                      {{ event.partner }}
+                    </small>
+
+                    {% if event.host %}
+                      <br>
+                      <small>Host: {{ event.host }}</small>
+                    {% endif %}
+
+                    {% if event.moon_illumination is not None %}
+                      <br>
+                      <small>Moon: {{ event.moon_illumination }}%</small>
+                    {% endif %}
+
+                    {% if event.weather_temperature_f %}
+                      <br>
+                      <small>
+                        {{ event.weather_temperature_f }}°F
+                        {% if event.weather_cloud_cover_percent %}
+                          · Clouds {{ event.weather_cloud_cover_percent }}%
+                        {% endif %}
+                      </small>
+                    {% endif %}
+                  </div>
+                </a>
               {% endfor %}
             {% endif %}
           </td>

@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'outreach/css/admin_custom.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div class="aas-admin-branding">
+    <img src="{% static 'outreach/img/aas-logo.png' %}" alt="AAS Logo">
+    <div>
+        <h1 id="site-name">AAS Outreach Admin</h1>
+        <p>Event scheduling and outreach management</p>
+    </div>
+</div>
+{% endblock %}

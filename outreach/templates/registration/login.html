@@ -1,0 +1,29 @@
+{% extends "outreach/base_public.html" %}
+
+{% block title %}Portal Login{% endblock %}
+
+{% block content %}
+<main class="container my-5">
+    <div class="auth-card mx-auto">
+        <p class="eyebrow text-muted">AAS Outreach</p>
+        <h1>Portal Login</h1>
+        <p class="text-muted">Sign in to view volunteer tools and upcoming outreach events.</p>
+
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            {{ form.as_p }}
+
+            <button type="submit" class="btn btn-aas-gold w-100">
+                Sign In
+            </button>
+        </form>
+
+        <hr>
+
+        <p class="mb-0">
+            Don’t have an account?
+            <a href="{% url 'register' %}">Create a volunteer account.</a>
+        </p>
+    </div>
+</main>
+{% endblock %}

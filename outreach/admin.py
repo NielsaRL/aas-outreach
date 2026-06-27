@@ -2,9 +2,10 @@ from django.contrib import admin
 from django import forms
 from .services.targets import suggest_targets_for_event
 from .services.weather import update_weather_for_event
+from .services.star_chart import generate_star_chart_pdf
 from django.contrib import messages
 from django.utils.html import format_html
-from django.urls import path
+from django.urls import path, reverse
 from django.shortcuts import render
 from django.utils.dateparse import parse_date
 from datetime import date, timedelta
@@ -83,7 +84,7 @@ class EventChecklistItemInlineForm(forms.ModelForm):
     class Meta:
         model = EventChecklistItem
         fields = "__all__"
-
+        
         widgets = {
             "notes": forms.Textarea(
                 attrs={
@@ -97,6 +98,7 @@ class EventChecklistItemInline(admin.TabularInline):
     form = EventChecklistItemInlineForm
     extra = 0
     show_change_link = False
+    ordering = ("due_date", "title")    
 
     fields = (
         "title",
@@ -133,6 +135,51 @@ class PartnerAdmin(admin.ModelAdmin):
         "active",
     )
 
+    fieldsets = (
+        ("Basic Information", {
+            "fields": (
+                "partner_name",
+                "partner_type",
+                "scheduling_type",
+                "priority",
+                "active",
+            )
+        }),
+        ("Scheduling Rules", {
+            "fields": (
+                "events_per_year",
+                "allowed_weekdays",
+                "allowed_weekday_occurrences",
+                "allowed_months",
+                "minimum_event_duration_minutes",
+                "maximum_event_duration_minutes",
+                "must_leave_by",
+            )
+        }),
+        ("Location", {
+            "fields": (
+                "location_name",
+                "address",
+                "latitude",
+                "longitude",
+                "sky_brightness_sqm",
+                "auto_bortle_class",
+            )
+        }),
+        ("Contact", {
+            "fields": (
+                "contact_name",
+                "contact_email",
+                "contact_phone",
+            )
+        }),
+        ("Notes", {
+            "fields": (
+                "notes",
+            )
+        }),
+    )
+
     list_filter = (
         "partner_type",
         "scheduling_type",
@@ -153,10 +200,9 @@ class PartnerAdmin(admin.ModelAdmin):
         "notes",
     )
 
-    readonly_fields = (
-        "sky_brightness_sqm",
-        "auto_bortle_class",
-    )
+    readonly_fields = ("auto_bortle_class",)
+
+    ordering = ("partner_name",)
 
 @admin.register(Volunteer)
 class VolunteerAdmin(admin.ModelAdmin):
@@ -177,10 +223,9 @@ class VolunteerAdmin(admin.ModelAdmin):
         "active",
     )
 
-    search_fields = (
-        "volunteer_name",
-        "email",
-    )
+    search_fields = ("first_name", "last_name", "email")
+
+    ordering = ("last_name", "first_name")
 
 @admin.register(ScheduledEvent)
 class ScheduledEventAdmin(admin.ModelAdmin):
@@ -227,6 +272,8 @@ class ScheduledEventAdmin(admin.ModelAdmin):
         "host",
     )
 
+    ordering = ("event_date", "start_time")
+
     date_hierarchy = "event_date"
 
     readonly_fields = (
@@ -244,6 +291,7 @@ class ScheduledEventAdmin(admin.ModelAdmin):
     actions = (
         "suggest_targets",
         "update_weather",
+        "generate_star_charts",
     )
     
     @admin.action(description="Suggest targets and talking points")
@@ -257,6 +305,20 @@ class ScheduledEventAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"{total_added} target suggestion(s) added.",
+            messages.SUCCESS,
+        )
+
+    @admin.action(description="Generate star chart PDF")
+    def generate_star_charts(self, request, queryset):
+        generated_count = 0
+
+        for event in queryset:
+            generate_star_chart_pdf(event)
+            generated_count += 1
+
+        self.message_user(
+            request,
+            f"{generated_count} star chart PDF(s) generated.",
             messages.SUCCESS,
         )
 
@@ -327,6 +389,10 @@ class ScheduledEventAdmin(admin.ModelAdmin):
 
         events_by_day = {}
         for event in events:
+            event.admin_url = reverse(
+                "admin:outreach_scheduledevent_change",
+                args=[event.pk],
+            )
             events_by_day.setdefault(event.event_date.day, []).append(event)
 
         cal = calendar.Calendar(firstweekday=6)
@@ -370,7 +436,7 @@ class AstronomicalTargetAdmin(admin.ModelAdmin):
         "name",
         "target_type",
         "constellation",
-        "best_months",
+        "best_months_display",
         "visible_during_event",
         "discussion_only",
         "active",
@@ -388,6 +454,34 @@ class AstronomicalTargetAdmin(admin.ModelAdmin):
         "constellation",
         "outreach_notes",
     )
+
+    ordering = ("name",)
+
+    def best_months_display(self, obj):
+        if not obj.best_months:
+            return ""
+
+        month_names = {
+            "1": "Jan",
+            "2": "Feb",
+            "3": "Mar",
+            "4": "Apr",
+            "5": "May",
+            "6": "Jun",
+            "7": "Jul",
+            "8": "Aug",
+            "9": "Sep",
+            "10": "Oct",
+            "11": "Nov",
+            "12": "Dec",
+        }
+
+        return ", ".join(
+            month_names.get(str(month), str(month))
+            for month in obj.best_months
+        )
+
+    best_months_display.short_description = "Best Months"
 
 @admin.register(SuggestedEvent)
 class SuggestedEventAdmin(admin.ModelAdmin):
@@ -416,6 +510,8 @@ class SuggestedEventAdmin(admin.ModelAdmin):
         "partner__location_name",
         "rejection_reason",
     )
+
+    ordering = ("suggested_date", "start_time")
 
     date_hierarchy = "suggested_date"
 
@@ -523,6 +619,8 @@ class EventChecklistAdmin(admin.ModelAdmin):
         "partner",
         "status",
     )
+
+    ordering = ("event_date", "start_time")
 
     inlines = [EventChecklistItemInline]
 

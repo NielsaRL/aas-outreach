@@ -1,0 +1,84 @@
+{% extends "outreach/base_public.html" %}
+
+{% block title %}Volunteer Portal{% endblock %}
+
+{% block content %}
+<main class="container my-5">
+
+    <section class="mb-5">
+        <p class="eyebrow text-muted">Volunteer Portal</p>
+        <h1>Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+
+        {% if volunteer %}
+            <p class="text-muted">
+                You are signed in as {{ volunteer.volunteer_name }}.
+            </p>
+        {% endif %}
+    </section>
+
+    {% if volunteer %}
+        <section class="mb-5">
+            <div class="aas-card p-4">
+                <h2 class="h4">Your Volunteer Profile</h2>
+
+                <p class="mb-1"><strong>Email:</strong> {{ volunteer.email }}</p>
+
+                {% if volunteer.phone %}
+                    <p class="mb-1"><strong>Phone:</strong> {{ volunteer.phone }}</p>
+                {% endif %}
+
+                {% if volunteer.equipment_owned %}
+                    <p class="mb-1"><strong>Equipment:</strong></p>
+                    <pre class="volunteer-equipment">{{ volunteer.equipment_owned }}</pre>
+                {% else %}
+                    <p class="text-muted mb-0">No equipment listed yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    <section>
+        <div class="mb-4">
+            <p class="eyebrow text-muted">Next 12 Months</p>
+            <h2>Upcoming Outreach Events</h2>
+        </div>
+
+        {% if events %}
+            <div class="row g-4">
+                {% for event in events %}
+                    <div class="col-md-6 col-lg-4">
+                        <article class="card h-100 event-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">{{ event.event_name }}</h3>
+
+                                <p class="card-text">
+                                    <strong>Date:</strong> {{ event.event_date|date:"F j, Y" }}<br>
+                                    <strong>Time:</strong> {{ event.start_time|time:"g:i A" }}<br>
+
+                                    {% if event.partner %}
+                                        <strong>Partner:</strong> {{ event.partner }}<br>
+                                    {% endif %}
+                                </p>
+
+                                <form method="post"
+                                    action="{% url 'volunteer_for_event' event.id %}"
+                                    class="mt-3">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-aas-gold btn-sm">
+                                        Volunteer for this Event
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-light border">
+                No upcoming outreach events are currently scheduled.
+            </div>
+        {% endif %}
+    </section>
+
+</main>
+{% endblock %}

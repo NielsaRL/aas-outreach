@@ -3,6 +3,7 @@ from datetime import datetime
 from .services.astronomy import calculate_twilight_times, calculate_moon_info
 from django.core.exceptions import ValidationError
 from multiselectfield import MultiSelectField
+from django.contrib.auth.models import User
 
 
 # Create your models here.
@@ -117,7 +118,6 @@ class Partner(models.Model):
     sky_brightness_sqm = models.FloatField(
         null=True,
         blank=True,
-        editable=False,
         help_text="Estimated sky brightness in mag/arcsec²."
     )
 
@@ -183,26 +183,47 @@ class Partner(models.Model):
         super().save(*args, **kwargs)
 
 class Volunteer(models.Model):
-    volunteer_name = models.CharField(max_length=200)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="volunteer_profile",
+    )
+
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
-    equipment_owned = models.TextField(blank=True, help_text="List equipment this volunteer owns, one item per line.")
+
+    equipment_owned = models.TextField(
+        blank=True,
+        help_text="List equipment this volunteer owns, one item per line."
+    )
+
     active = models.BooleanField(default=True)
+
     host_trained = models.BooleanField(
-    default=False,
-    help_text="Check if this volunteer is trained to host events."
+        default=False,
+        help_text="Check if this volunteer is trained to host events."
     )
 
     outreach_committee = models.BooleanField(
         default=False,
         help_text="Member of the AAS Outreach Committee"
     )
-    
+
     cleared_by_pfsp = models.BooleanField(
         default=False,
         help_text="Check if this volunteer is cleared by PFSP."
     )
+
     notes = models.TextField(blank=True)
+
+    @property
+    def volunteer_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
 
     def __str__(self):
         return self.volunteer_name
