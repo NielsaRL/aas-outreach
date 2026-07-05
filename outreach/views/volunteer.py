@@ -6,30 +6,8 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.utils import timezone
 from django.contrib import messages
 
-from .forms import VolunteerRegistrationForm, VolunteerProfileForm
-from .models import ScheduledEvent, EventVolunteer, Volunteer
-
-
-def public_home(request):
-    today = timezone.localdate()
-
-    events = list(
-        ScheduledEvent.objects
-        .filter(event_date__gte=today)
-        .order_by("event_date", "start_time")[:9]
-    )
-
-    featured_event = events[0] if events else None
-    upcoming_events = events[1:] if len(events) > 1 else []
-
-    return render(
-        request,
-        "outreach/public_home.html",
-        {
-            "featured_event": featured_event,
-            "upcoming_events": upcoming_events,
-        },
-    )
+from outreach.models import EventVolunteer, ScheduledEvent, Volunteer
+from outreach.forms import VolunteerProfileForm, VolunteerRegistrationForm
 
 def register(request):
     if request.method == "POST":
