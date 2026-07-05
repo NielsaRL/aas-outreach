@@ -206,3 +206,55 @@ body {
     border-radius: 10px;
     padding: 1rem;
 }
+
+.signed-up-event-card {
+    background: #eefaf2;
+    border: 2px solid #8fd3a7;
+    transition: .2s;
+}
+
+.signed-up-event-card:hover {
+    border-color: #5ea975;
+}
+
+.volunteer-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #198754;
+    color: white;
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.nav-logout-form {
+    margin: 0;
+}
+
+.portal-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4rem 0;
+    color: var(--aas-gold);
+    font-size: 1.2rem;
+}
+
+.portal-divider::before,
+.portal-divider::after {
+    content: "";
+    display: block;
+    width: 35%;
+    height: 2px;
+    background: #d5d9df;
+}
+
+.portal-divider::before {
+    margin-right: 1rem;
+}
+
+.portal-divider::after {
+    margin-left: 1rem;
+}

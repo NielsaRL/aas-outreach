@@ -15,69 +15,76 @@
 <body>
 
 <nav class="navbar navbar-expand-lg aas-navbar">
-
     <div class="container">
 
         <a class="navbar-brand d-flex align-items-center gap-3"
-           href="{% url 'public_home' %}">
+           href="{% if user.is_authenticated %}{% url 'volunteer_portal' %}{% else %}{% url 'public_home' %}{% endif %}">
 
             <img src="{% static 'outreach/img/aas-logo.png' %}"
                  alt="Austin Astronomical Society"
                  class="aas-logo">
 
             <span class="brand-text">
-                <span class="brand-main">
-                    Austin Astronomical Society
-                </span>
-
-                <span class="brand-sub">
-                    Outreach Portal
-                </span>
+                <span class="brand-main">Austin Astronomical Society</span>
+                <span class="brand-sub">Outreach Portal</span>
             </span>
-
         </a>
 
         <button class="navbar-toggler"
                 type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#navbarNav">
-
             <span class="navbar-toggler-icon"></span>
-
         </button>
 
-        <div class="collapse navbar-collapse"
-             id="navbarNav">
-
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center">
 
                 <li class="nav-item">
-                    <a class="nav-link"
-                       href="{% url 'public_home' %}#upcoming-events">
-                        Events
+                    <a class="nav-link" href="{% url 'public_home' %}">
+                        Home
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    <a class="nav-link"
-                       href="#">
-                        Volunteer
-                    </a>
-                </li>
+                {% if user.is_authenticated %}
 
-                <li class="nav-item ms-lg-3">
-                    <a class="btn btn-sm btn-aas-outline"
-                       href="{% url 'login' %}">
-                        Portal Login
-                    </a>
-                </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'volunteer_portal' %}">
+                            My Portal
+                        </a>
+                    </li>
+
+                    {% if user.is_staff %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'admin:index' %}">
+                                Admin
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <li class="nav-item ms-lg-3">
+                        <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-aas-outline">
+                                Logout
+                            </button>
+                        </form>
+                    </li>
+
+                {% else %}
+
+                    <li class="nav-item ms-lg-3">
+                        <a class="btn btn-sm btn-aas-outline" href="{% url 'login' %}">
+                            Portal Login
+                        </a>
+                    </li>
+
+                {% endif %}
 
             </ul>
-
         </div>
 
     </div>
-
 </nav>
 
 {% if messages %}

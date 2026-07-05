@@ -173,7 +173,15 @@ class PartnerAdmin(admin.ModelAdmin):
                 "contact_phone",
             )
         }),
-        ("Notes", {
+        ("Volunteer Location Instructions", {
+            "fields": (
+                "volunteer_arrival_instructions",
+                "meeting_location",
+                "parking_instructions",
+                "setup_location_notes",
+            )
+        }),
+        ("General Notes", {
             "fields": (
                 "notes",
             )
@@ -203,6 +211,7 @@ class PartnerAdmin(admin.ModelAdmin):
     readonly_fields = ("auto_bortle_class",)
 
     ordering = ("partner_name",)
+    
 
 @admin.register(Volunteer)
 class VolunteerAdmin(admin.ModelAdmin):

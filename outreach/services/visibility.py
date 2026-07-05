@@ -1,6 +1,4 @@
-# code for determining if a celestial target from the seed_targets, and dynamic targets can be seen during the hours of the eventS
-
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from skyfield.api import Star, load, wgs84
@@ -53,9 +51,10 @@ def target_is_visible_for_event(event, target, minimum_altitude=20):
     visibility = get_target_altitude_for_event(event, target)
 
     if visibility is None:
-        return True  # allow discussion-only / no-coordinate targets through
+        return True
 
     return visibility["altitude"] >= minimum_altitude
+
 
 def get_target_visibility_window_for_event(event, target, minimum_altitude=20):
     if target.ra_hours is None or target.dec_degrees is None:
@@ -80,6 +79,9 @@ def get_target_visibility_window_for_event(event, target, minimum_altitude=20):
         event.end_time,
         tzinfo=timezone,
     )
+
+    if end_datetime <= current_datetime:
+        end_datetime += timedelta(days=1)
 
     ts = load.timescale()
     eph = load("de421.bsp")

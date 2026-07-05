@@ -151,6 +151,27 @@ class Partner(models.Model):
     contact_phone = models.CharField(max_length=50, blank=True)
    
     active = models.BooleanField(default=True)
+    volunteer_arrival_instructions = models.TextField(
+        blank=True,
+        help_text="Recurring arrival instructions for volunteers at this partner/location."
+    )
+
+    meeting_location = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Where volunteers should meet upon arrival."
+    )
+
+    parking_instructions = models.TextField(
+        blank=True,
+        help_text="Recurring parking instructions for this partner/location."
+    )
+
+    setup_location_notes = models.TextField(
+        blank=True,
+        help_text="Recurring setup notes, such as where telescopes, tables, or check-in should go."
+    )
+    
     notes = models.TextField(blank=True)
 
     def clean(self):
@@ -353,7 +374,10 @@ class ScheduledEvent(models.Model):
     weather_warning_text = models.CharField(max_length=255, blank=True)
     weather_summary = models.CharField(max_length=255, blank=True)
     weather_last_checked = models.DateTimeField(null=True, blank=True)
-
+    event_specific_instructions = models.TextField(
+        blank=True,
+        help_text="Special instructions for this event only. Use the Partner record for recurring location instructions."
+    )
     notes = models.TextField(blank=True)
 
     def host_display(self):
@@ -561,6 +585,12 @@ class AstronomicalTarget(models.Model):
 
     ra_hours = models.FloatField(null=True, blank=True)
     dec_degrees = models.FloatField(null=True, blank=True)
+
+    representative_point = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="What these coordinates represent."
+    )
 
     def __str__(self):
         return f"{self.name} ({self.get_target_type_display()})"

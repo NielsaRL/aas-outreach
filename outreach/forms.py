@@ -88,3 +88,18 @@ class VolunteerRegistrationForm(forms.Form):
             )
 
         return user
+
+class VolunteerProfileForm(forms.ModelForm):
+    class Meta:
+        model = Volunteer
+        fields = (
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "equipment_owned",
+        )
+
+        widgets = {
+            "equipment_owned": forms.Textarea(attrs={"rows": 4}),
+        }

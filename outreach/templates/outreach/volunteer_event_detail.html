@@ -1,0 +1,166 @@
+{% extends "outreach/base_public.html" %}
+
+{% block title %}{{ event.event_name }}{% endblock %}
+
+{% block content %}
+<main class="container my-5">
+
+    <section class="mb-4">
+        <p class="eyebrow text-muted">Event Details</p>
+        <h1>{{ event.event_name }}</h1>
+    </section>
+
+    <section class="aas-card p-4 mb-4">
+        <h2 class="h4">Event Information</h2>
+
+        <p><strong>Date:</strong> {{ event.event_date|date:"F j, Y" }}</p>
+
+        <p>
+            <strong>Time:</strong>
+            {{ event.start_time|time:"g:i A" }}
+            {% if event.end_time %}
+                – {{ event.end_time|time:"g:i A" }}
+            {% endif %}
+        </p>
+
+        {% if event.partner %}
+            <p><strong>Partner:</strong> {{ event.partner }}</p>
+        {% endif %}
+
+        {% if event.host %}
+            <p><strong>Host:</strong> {{ event.host }}</p>
+        {% endif %}
+    </section>
+
+    {% if event.partner %}
+        <section class="aas-card p-4 mb-4">
+            <h2 class="h4">Location Information</h2>
+
+            {% if event.partner.location_name %}
+                <p><strong>Location:</strong> {{ event.partner.location_name }}</p>
+            {% endif %}
+
+            {% if event.partner.address %}
+                <p><strong>Address:</strong> {{ event.partner.address }}</p>
+            {% endif %}
+
+            {% if event.partner.meeting_location %}
+                <p><strong>Meet at:</strong> {{ event.partner.meeting_location }}</p>
+            {% endif %}
+
+            {% if event.partner.volunteer_arrival_instructions %}
+                <p><strong>Arrival Instructions:</strong></p>
+                {{ event.partner.volunteer_arrival_instructions|linebreaks }}
+            {% endif %}
+
+            {% if event.partner.parking_instructions %}
+                <p><strong>Parking:</strong></p>
+                {{ event.partner.parking_instructions|linebreaks }}
+            {% endif %}
+
+            {% if event.partner.setup_location_notes %}
+                <p><strong>Setup Location:</strong></p>
+                {{ event.partner.setup_location_notes|linebreaks }}
+            {% endif %}
+        </section>
+    {% endif %}
+
+    <section class="aas-card p-4 mb-4">
+        <h2 class="h4">Suggested Observing Targets</h2>
+
+        {% if event_targets %}
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Target</th>
+                            <th>Altitude</th>
+                            <th>Azimuth</th>
+                            <th>Visible Window</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event_target in event_targets %}
+                            <tr>
+                                <td>{{ event_target.target.name }}</td>
+
+                                <td>
+                                    {% if event_target.altitude_degrees %}
+                                        {{ event_target.altitude_degrees }}°
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if event_target.azimuth_degrees %}
+                                        {{ event_target.azimuth_degrees }}°
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if event_target.visible_start_time and event_target.visible_end_time %}
+                                        {{ event_target.visible_start_time|time:"g:i A" }}
+                                        –
+                                        {{ event_target.visible_end_time|time:"g:i A" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No observing targets have been assigned yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="aas-card p-4 mb-4">
+        <h2 class="h4">Volunteers</h2>
+
+        {% if event_volunteers %}
+            <ul class="mb-0">
+                {% for event_volunteer in event_volunteers %}
+                    <li>{{ event_volunteer.volunteer.volunteer_name }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted mb-0">No volunteers have signed up yet.</p>
+        {% endif %}
+    </section>
+
+    {% if event.notes %}
+        <section class="aas-card p-4 mb-4">
+            <h2 class="h4">Event Notes</h2>
+            {{ event.notes|linebreaks }}
+        </section>
+    {% endif %}
+
+    <section class="aas-card p-4">
+        {% if is_signed_up %}
+            <div class="alert alert-success">
+                You are signed up for this event.
+            </div>
+
+            <form method="post" action="{% url 'cancel_volunteer_for_event' event.id %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-danger">
+                    Cancel Signup
+                </button>
+            </form>
+        {% else %}
+            <form method="post" action="{% url 'volunteer_for_event' event.id %}">
+                {% csrf_token %}
+                <button class="btn btn-aas-gold">
+                    Volunteer for this Event
+                </button>
+            </form>
+        {% endif %}
+    </section>
+
+</main>
+{% endblock %}
