@@ -532,16 +532,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 telescopeInput.value = "1";
             }
         } else {
+            telescopeInput.min = "0";
             telescopeInput.value = "0";
         }
     }
-
-    roleInputs.forEach(function (input) {
-        input.addEventListener(
-            "change",
-            updateTelescopeField
-        );
-    });
 
     updateTelescopeField();
 });
