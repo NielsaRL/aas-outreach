@@ -1,13 +1,18 @@
-from datetime import timedelta
-
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render, get_object_or_404
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.contrib import messages
 
+import calendar
+from datetime import date, timedelta
+
+from outreach.services.astronomy import calculate_moon_info
+
+from outreach.forms import (EventVolunteerSignupForm, VolunteerProfileForm, VolunteerRegistrationForm,)
 from outreach.models import EventVolunteer, ScheduledEvent, Volunteer
-from outreach.forms import VolunteerProfileForm, VolunteerRegistrationForm
+
 
 def register(request):
     if request.method == "POST":
@@ -30,13 +35,17 @@ def volunteer_portal(request):
 
     volunteer = getattr(request.user, "volunteer_profile", None)
 
-    events = (
+    upcoming_events = (
         ScheduledEvent.objects
-        .filter(event_date__gte=today, event_date__lte=one_year_from_today)
+        .filter(
+            event_date__gte=today,
+            event_date__lte=one_year_from_today,
+        )
         .order_by("event_date", "start_time")
     )
 
     signed_up_event_ids = set()
+    previous_events = ScheduledEvent.objects.none()
 
     if volunteer:
         signed_up_event_ids = set(
@@ -45,8 +54,22 @@ def volunteer_portal(request):
             ).values_list("event_id", flat=True)
         )
 
-    my_events = events.filter(id__in=signed_up_event_ids)
-    available_events = events.exclude(id__in=signed_up_event_ids)
+        previous_events = (
+            ScheduledEvent.objects
+            .filter(
+                id__in=signed_up_event_ids,
+                event_date__lt=today,
+            )
+            .order_by("-event_date", "-start_time")
+        )
+
+    my_events = upcoming_events.filter(
+        id__in=signed_up_event_ids
+    )
+
+    available_events = upcoming_events.exclude(
+        id__in=signed_up_event_ids
+    )
 
     return render(
         request,
@@ -55,13 +78,134 @@ def volunteer_portal(request):
             "volunteer": volunteer,
             "my_events": my_events,
             "available_events": available_events,
+            "previous_events": previous_events,
             "signed_up_event_ids": signed_up_event_ids,
         },
     )
 
 @login_required
+def volunteer_calendar(request):
+    today = timezone.localdate()
+
+    try:
+        year = int(request.GET.get("year", today.year))
+        month = int(request.GET.get("month", today.month))
+    except (TypeError, ValueError):
+        year = today.year
+        month = today.month
+
+    if month < 1 or month > 12:
+        year = today.year
+        month = today.month
+
+    first_day = date(year, month, 1)
+    last_day = date(
+        year,
+        month,
+        calendar.monthrange(year, month)[1],
+    )
+
+    events = (
+        ScheduledEvent.objects
+        .filter(
+            event_date__gte=first_day,
+            event_date__lte=last_day,
+        )
+        .exclude(status="CANCELLED")
+        .select_related("partner")
+        .order_by("event_date", "start_time")
+    )
+
+    events_by_date = {}
+
+    for event in events:
+        events_by_date.setdefault(
+            event.event_date,
+            [],
+        ).append(event)
+
+    cal = calendar.Calendar(firstweekday=6)
+    raw_weeks = cal.monthdatescalendar(year, month)
+
+    weeks = []
+
+    for raw_week in raw_weeks:
+        week = []
+
+        for day_date in raw_week:
+            moon_data = calculate_moon_info(
+                event_date=day_date,
+                timezone_name="America/Chicago",
+            )
+
+            illumination = moon_data.get("moon_illumination") or 0
+            phase = moon_data.get("moon_phase", "")
+
+            if illumination < 12:
+                moon_icon = "🌑"
+            elif illumination < 37:
+                moon_icon = "🌒"
+            elif illumination < 62:
+                moon_icon = "🌓"
+            elif illumination < 87:
+                moon_icon = "🌔"
+            else:
+                moon_icon = "🌕"
+
+            week.append(
+                {
+                    "date": day_date,
+                    "day": day_date.day,
+                    "in_current_month": day_date.month == month,
+                    "is_today": day_date == today,
+                    "events": events_by_date.get(day_date, []),
+                    "moon_phase": phase,
+                    "moon_illumination": illumination,
+                    "moon_color": (
+                        round(65 + ((illumination / 100) * 175)),
+                        round(67 + ((illumination / 100) * 175)),
+                        round(130 + ((illumination / 100) * 125)),
+                    ),
+                    "moon_icon": moon_icon,
+                }
+            )
+
+        weeks.append(week)
+
+    previous_month = month - 1
+    previous_year = year
+
+    if previous_month == 0:
+        previous_month = 12
+        previous_year -= 1
+
+    next_month = month + 1
+    next_year = year
+
+    if next_month == 13:
+        next_month = 1
+        next_year += 1
+
+    return render(
+        request,
+        "outreach/volunteer_calendar.html",
+        {
+            "weeks": weeks,
+            "month": month,
+            "year": year,
+            "month_name": calendar.month_name[month],
+            "previous_month": previous_month,
+            "previous_year": previous_year,
+            "next_month": next_month,
+            "next_year": next_year,
+        },
+    )
+
+@login_required
 def volunteer_for_event(request, event_id):
-    event = get_object_or_404(ScheduledEvent, id=event_id)
+    if request.method != "POST":
+        return redirect("volunteer_event_detail", event_id=event_id)
+
     volunteer = getattr(request.user, "volunteer_profile", None)
 
     if volunteer is None:
@@ -73,13 +217,83 @@ def volunteer_for_event(request, event_id):
             active=True,
         )
 
-    EventVolunteer.objects.get_or_create(
-        event=event,
+    existing_signup = EventVolunteer.objects.filter(
+        event_id=event_id,
         volunteer=volunteer,
+    ).first()
+
+    if existing_signup:
+        messages.info(
+            request,
+            "You are already signed up for this event.",
+        )
+        return redirect("volunteer_event_detail", event_id=event_id)
+
+    form = EventVolunteerSignupForm(request.POST)
+
+    if not form.is_valid():
+        event = get_object_or_404(ScheduledEvent, id=event_id)
+
+        event_volunteers = (
+            EventVolunteer.objects
+            .filter(event=event)
+            .select_related("volunteer")
+        )
+
+        event_targets = event.event_targets.select_related("target").all()
+
+        return render(
+            request,
+            "outreach/volunteer_event_detail.html",
+            {
+                "event": event,
+                "volunteer": volunteer,
+                "is_signed_up": False,
+                "event_volunteers": event_volunteers,
+                "event_targets": event_targets,
+                "signup_form": form,
+            },
+        )
+
+    with transaction.atomic():
+        event = (
+            ScheduledEvent.objects
+            .select_for_update()
+            .get(id=event_id)
+        )
+
+        current_volunteer_count = EventVolunteer.objects.filter(
+            event=event
+        ).count()
+
+        if (
+            event.volunteer_capacity is not None
+            and current_volunteer_count >= event.volunteer_capacity
+        ):
+            messages.error(
+                request,
+                "This event has reached its volunteer capacity.",
+            )
+            return redirect(
+                "volunteer_event_detail",
+                event_id=event.id,
+            )
+
+        signup = form.save(commit=False)
+        signup.event = event
+        signup.volunteer = volunteer
+        signup.full_clean()
+        signup.save()
+
+    messages.success(
+        request,
+        f"You are signed up for {event.event_name}.",
     )
 
-    messages.success(request, f"You are signed up for {event.event_name}.")
-    return redirect("volunteer_portal")
+    return redirect(
+        "volunteer_event_detail",
+        event_id=event.id,
+    )
 
 
 @login_required
@@ -93,27 +307,41 @@ def cancel_volunteer_for_event(request, event_id):
             volunteer=volunteer,
         ).delete()
 
-        messages.success(request, f"You are no longer signed up for {event.event_name}.")
+        messages.success(
+            request,
+            f"You are no longer signed up for {event.event_name}.",
+        )
 
     return redirect("volunteer_portal")
+
 
 @login_required
 def volunteer_event_detail(request, event_id):
     event = get_object_or_404(ScheduledEvent, id=event_id)
     volunteer = getattr(request.user, "volunteer_profile", None)
 
-    is_signed_up = False
+    signup = None
+
     if volunteer:
-        is_signed_up = EventVolunteer.objects.filter(
+        signup = EventVolunteer.objects.filter(
             event=event,
             volunteer=volunteer,
-        ).exists()
+        ).first()
 
-    event_volunteers = EventVolunteer.objects.filter(
-        event=event
-    ).select_related("volunteer")
+    is_signed_up = signup is not None
+
+    event_volunteers = (
+        EventVolunteer.objects
+        .filter(event=event)
+        .select_related("volunteer")
+    )
 
     event_targets = event.event_targets.select_related("target").all()
+
+    signup_form = None
+
+    if not is_signed_up and not event.volunteer_signup_full:
+        signup_form = EventVolunteerSignupForm()
 
     return render(
         request,
@@ -122,10 +350,13 @@ def volunteer_event_detail(request, event_id):
             "event": event,
             "volunteer": volunteer,
             "is_signed_up": is_signed_up,
+            "signup": signup,
+            "signup_form": signup_form,
             "event_volunteers": event_volunteers,
             "event_targets": event_targets,
         },
     )
+
 
 @login_required
 def edit_volunteer_profile(request):
@@ -141,7 +372,10 @@ def edit_volunteer_profile(request):
         )
 
     if request.method == "POST":
-        form = VolunteerProfileForm(request.POST, instance=volunteer)
+        form = VolunteerProfileForm(
+            request.POST,
+            instance=volunteer,
+        )
 
         if form.is_valid():
             volunteer = form.save()
@@ -151,7 +385,11 @@ def edit_volunteer_profile(request):
             request.user.email = volunteer.email
             request.user.save()
 
-            messages.success(request, "Your volunteer profile has been updated.")
+            messages.success(
+                request,
+                "Your volunteer profile has been updated.",
+            )
+
             return redirect("volunteer_portal")
     else:
         form = VolunteerProfileForm(instance=volunteer)

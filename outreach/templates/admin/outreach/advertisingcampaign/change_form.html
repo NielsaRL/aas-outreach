@@ -1,0 +1,33 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+
+    {% if original and change %}
+        <li>
+            <form
+                method="post"
+                action="{% url 'admin:outreach_advertisingcampaign_generate_copy' original.pk %}"
+                style="display: inline;"
+            >
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="button"
+                    style="
+                        background: #417690;
+                        border: none;
+                        border-radius: 4px;
+                        color: white;
+                        cursor: pointer;
+                        padding: 8px 12px;
+                    "
+                >
+                    Generate Advertising Copy
+                </button>
+            </form>
+        </li>
+    {% endif %}
+{% endblock %}

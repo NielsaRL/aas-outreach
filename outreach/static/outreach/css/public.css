@@ -218,15 +218,15 @@ body {
 }
 
 .volunteer-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
     background: #198754;
     color: white;
-    padding: .35rem .75rem;
-    border-radius: 999px;
-    font-size: .75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .nav-logout-form {

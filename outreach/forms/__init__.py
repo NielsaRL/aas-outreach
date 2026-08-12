@@ -1,5 +1,5 @@
 from .registration import VolunteerRegistrationForm
-from .volunteer import VolunteerProfileForm
+from .volunteer import EventVolunteerSignupForm, VolunteerProfileForm
 
 __all__ = [
     "VolunteerRegistrationForm",

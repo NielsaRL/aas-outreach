@@ -1,0 +1,78 @@
+{
+  "austin|texas": {
+    "latitude": 30.2672,
+    "longitude": -97.7431
+  },
+  "bastrop|texas": {
+    "latitude": 30.1105,
+    "longitude": -97.3153
+  },
+  "bee cave|texas": {
+    "latitude": 30.3085,
+    "longitude": -97.9450
+  },
+  "cedar park|texas": {
+    "latitude": 30.5052,
+    "longitude": -97.8203
+  },
+  "dripping springs|texas": {
+    "latitude": 30.1902,
+    "longitude": -98.0867
+  },
+  "fredericksburg|texas": {
+    "latitude": 30.2752,
+    "longitude": -98.8720
+  },
+  "georgetown|texas": {
+    "latitude": 30.6333,
+    "longitude": -97.6770
+  },
+  "hutto|texas": {
+    "latitude": 30.5427,
+    "longitude": -97.5467
+  },
+  "kyle|texas": {
+    "latitude": 29.9891,
+    "longitude": -97.8772
+  },
+  "lakeway|texas": {
+    "latitude": 30.3638,
+    "longitude": -97.9796
+  },
+  "leander|texas": {
+    "latitude": 30.5788,
+    "longitude": -97.8531
+  },
+  "lockhart|texas": {
+    "latitude": 29.8849,
+    "longitude": -97.6704
+  },
+  "manor|texas": {
+    "latitude": 30.3408,
+    "longitude": -97.5569
+  },
+  "marble falls|texas": {
+    "latitude": 30.5782,
+    "longitude": -98.2751
+  },
+  "pflugerville|texas": {
+    "latitude": 30.4394,
+    "longitude": -97.6200
+  },
+  "round rock|texas": {
+    "latitude": 30.5083,
+    "longitude": -97.6789
+  },
+  "san marcos|texas": {
+    "latitude": 29.8833,
+    "longitude": -97.9414
+  },
+  "smithville|texas": {
+    "latitude": 30.0086,
+    "longitude": -97.1594
+  },
+  "wimberley|texas": {
+    "latitude": 29.9974,
+    "longitude": -98.0986
+  }
+}

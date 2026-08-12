@@ -11,41 +11,127 @@
     </section>
 
     <section class="aas-card p-4 mb-4">
-        <h2 class="h4">Event Information</h2>
+        <h2 class="h4 mb-3">Event Information</h2>
 
-        <p><strong>Date:</strong> {{ event.event_date|date:"F j, Y" }}</p>
+        <p>
+            <strong>Date:</strong>
+            {{ event.event_date|date:"F j, Y" }}
+        </p>
 
         <p>
             <strong>Time:</strong>
-            {{ event.start_time|time:"g:i A" }}
+            {% if event.start_time %}
+                {{ event.start_time|time:"g:i A" }}
+            {% else %}
+                TBD
+            {% endif %}
+
             {% if event.end_time %}
                 – {{ event.end_time|time:"g:i A" }}
             {% endif %}
         </p>
 
         {% if event.partner %}
-            <p><strong>Partner:</strong> {{ event.partner }}</p>
+            <p>
+                <strong>Partner:</strong>
+                {{ event.partner }}
+            </p>
         {% endif %}
 
+        <p>
+            <strong>Volunteers:</strong>
+            {{ event.volunteer_count }}
+
+            {% if event.volunteer_capacity %}
+                of {{ event.volunteer_capacity }}
+            {% else %}
+                <span class="text-muted">(Unlimited)</span>
+            {% endif %}
+        </p>
+
+        <p>
+            <strong>Telescopes Expected:</strong>
+            {{ event.telescope_count }}
+        </p>
+
+        {% if event.volunteer_capacity %}
+            {% if event.volunteer_signup_full %}
+                <div class="alert alert-warning mb-0">
+                    This event has reached its volunteer capacity.
+                </div>
+            {% elif event.volunteer_spots_remaining == 1 %}
+                <div class="alert alert-info mb-0">
+                    1 volunteer spot remaining.
+                </div>
+            {% else %}
+                <div class="alert alert-info mb-0">
+                    {{ event.volunteer_spots_remaining }} volunteer spots remaining.
+                </div>
+            {% endif %}
+        {% endif %}
+    </section>
+
+    <section class="aas-card p-4 mb-4">
+        <h2 class="h4 mb-3">Event Host</h2>
+
         {% if event.host %}
-            <p><strong>Host:</strong> {{ event.host }}</p>
+            <p class="mb-1">
+                <strong>{{ event.host.volunteer_name }}</strong>
+            </p>
+
+            {% if event.host.email %}
+                <p class="mb-1">
+                    <strong>Email:</strong>
+                    <a href="mailto:{{ event.host.email }}">
+                        {{ event.host.email }}
+                    </a>
+                </p>
+            {% endif %}
+
+            {% if event.host.phone %}
+                <p class="mb-0">
+                    <strong>Phone:</strong>
+                    <a href="tel:{{ event.host.phone }}">
+                        {{ event.host.phone }}
+                    </a>
+                </p>
+            {% endif %}
+
+        {% elif event.manual_host_name %}
+            <p class="mb-0">
+                <strong>{{ event.manual_host_name }}</strong>
+            </p>
+
+        {% else %}
+            <p class="text-muted mb-0">
+                A host has not been assigned yet.
+            </p>
         {% endif %}
     </section>
 
     {% if event.partner %}
         <section class="aas-card p-4 mb-4">
-            <h2 class="h4">Location Information</h2>
+            <h2 class="h4 mb-3">Location Information</h2>
 
             {% if event.partner.location_name %}
-                <p><strong>Location:</strong> {{ event.partner.location_name }}</p>
+                <p>
+                    <strong>Location:</strong>
+                    {{ event.partner.location_name }}
+                </p>
             {% endif %}
 
             {% if event.partner.address %}
-                <p><strong>Address:</strong> {{ event.partner.address }}</p>
+                <p>
+                    <strong>Address:</strong>
+                    {{ event.partner.address }}
+                </p>
             {% endif %}
 
             {% if event.partner.meeting_location %}
-                <p><strong>Meet at:</strong> {{ event.partner.meeting_location }}</p>
+                <p>
+                    <strong>Meet at:</strong>
+                    {{ event.partner.meeting_location }}
+                </p>
             {% endif %}
 
             {% if event.partner.volunteer_arrival_instructions %}
@@ -65,12 +151,63 @@
         </section>
     {% endif %}
 
+    {% if event.event_specific_instructions %}
+        <section class="aas-card p-4 mb-4">
+            <h2 class="h4 mb-3">Special Instructions</h2>
+            {{ event.event_specific_instructions|linebreaks }}
+        </section>
+    {% endif %}
+
     <section class="aas-card p-4 mb-4">
-        <h2 class="h4">Suggested Observing Targets</h2>
+        <h2 class="h4 mb-3">Volunteers</h2>
+
+        {% if event_volunteers %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Volunteer</th>
+                            <th>Role</th>
+                            <th>Telescopes</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for event_volunteer in event_volunteers %}
+                            <tr>
+                                <td>
+                                    {{ event_volunteer.volunteer.volunteer_name }}
+                                </td>
+
+                                <td>
+                                    {{ event_volunteer.get_role_display }}
+                                </td>
+
+                                <td>
+                                    {% if event_volunteer.telescope_count %}
+                                        {{ event_volunteer.telescope_count }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">
+                No volunteers have signed up yet.
+            </p>
+        {% endif %}
+    </section>
+
+    <section class="aas-card p-4 mb-4">
+        <h2 class="h4 mb-3">Suggested Observing Targets</h2>
 
         {% if event_targets %}
             <div class="table-responsive">
-                <table class="table align-middle">
+                <table class="table align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Target</th>
@@ -79,10 +216,13 @@
                             <th>Visible Window</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         {% for event_target in event_targets %}
                             <tr>
-                                <td>{{ event_target.target.name }}</td>
+                                <td>
+                                    {{ event_target.target.name }}
+                                </td>
 
                                 <td>
                                     {% if event_target.altitude_degrees %}
@@ -115,52 +255,296 @@
                 </table>
             </div>
         {% else %}
-            <p class="text-muted mb-0">No observing targets have been assigned yet.</p>
-        {% endif %}
-    </section>
-
-    <section class="aas-card p-4 mb-4">
-        <h2 class="h4">Volunteers</h2>
-
-        {% if event_volunteers %}
-            <ul class="mb-0">
-                {% for event_volunteer in event_volunteers %}
-                    <li>{{ event_volunteer.volunteer.volunteer_name }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted mb-0">No volunteers have signed up yet.</p>
+            <p class="text-muted mb-0">
+                No observing targets have been assigned yet.
+            </p>
         {% endif %}
     </section>
 
     {% if event.notes %}
         <section class="aas-card p-4 mb-4">
-            <h2 class="h4">Event Notes</h2>
+            <h2 class="h4 mb-3">Event Notes</h2>
             {{ event.notes|linebreaks }}
         </section>
     {% endif %}
 
     <section class="aas-card p-4">
+
         {% if is_signed_up %}
+
             <div class="alert alert-success">
-                You are signed up for this event.
+                <strong>You are signed up for this event.</strong>
+
+                {% if signup %}
+                    <div class="mt-2">
+                        <strong>Role:</strong>
+                        {{ signup.get_role_display }}
+
+                        {% if signup.telescope_count %}
+                            <br>
+                            <strong>Telescopes:</strong>
+                            {{ signup.telescope_count }}
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
 
-            <form method="post" action="{% url 'cancel_volunteer_for_event' event.id %}">
+            <form
+                method="post"
+                action="{% url 'cancel_volunteer_for_event' event.id %}"
+            >
                 {% csrf_token %}
-                <button class="btn btn-outline-danger">
+
+                <button
+                    type="submit"
+                    class="btn btn-outline-danger"
+                >
                     Cancel Signup
                 </button>
             </form>
-        {% else %}
-            <form method="post" action="{% url 'volunteer_for_event' event.id %}">
+
+        {% elif event.volunteer_signup_full %}
+
+            <div class="alert alert-warning mb-0">
+                <strong>This event is full.</strong>
+                Volunteer signup is currently closed.
+            </div>
+
+        {% elif signup_form %}
+
+            <h2 class="h4 mb-4">
+                Volunteer for this Event
+            </h2>
+
+            <form
+                method="post"
+                action="{% url 'volunteer_for_event' event.id %}"
+                class="volunteer-signup-form"
+            >
                 {% csrf_token %}
-                <button class="btn btn-aas-gold">
-                    Volunteer for this Event
+
+                {% if signup_form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ signup_form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- ROLE -->
+
+                <div class="signup-field">
+                    <div class="signup-label">
+                        How would you like to help?
+                    </div>
+
+                    <div class="role-options">
+
+                        {% for radio in signup_form.role %}
+                            <div class="role-option">
+                                {{ radio.tag }}
+
+                                <label for="{{ radio.id_for_label }}">
+                                    {{ radio.choice_label }}
+                                </label>
+                            </div>
+                        {% endfor %}
+
+                    </div>
+
+                    {% for error in signup_form.role.errors %}
+                        <div class="text-danger small mt-2">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+
+                <!-- TELESCOPE COUNT -->
+
+                <div
+                    class="signup-field"
+                    id="telescope-count-section"
+                    style="display: none;"
+                >
+                    <label
+                        class="signup-label"
+                        for="{{ signup_form.telescope_count.id_for_label }}"
+                    >
+                        How many telescopes are you bringing?
+                    </label>
+
+                    <div class="signup-help">
+                        Enter the number of telescopes you plan to bring.
+                    </div>
+
+                    <div class="telescope-input">
+                        {{ signup_form.telescope_count }}
+                    </div>
+
+                    {% for error in signup_form.telescope_count.errors %}
+                        <div class="text-danger small mt-2">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+
+                <!-- NOTES -->
+
+                <div class="signup-field">
+                    <label
+                        class="signup-label"
+                        for="{{ signup_form.notes.id_for_label }}"
+                    >
+                        Notes
+                    </label>
+
+                    <div class="signup-help">
+                        Optional. Add anything the event host should know.
+                    </div>
+
+                    {{ signup_form.notes }}
+
+                    {% for error in signup_form.notes.errors %}
+                        <div class="text-danger small mt-2">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="btn btn-aas-gold"
+                >
+                    Sign Up for this Event
                 </button>
+
             </form>
+
         {% endif %}
+
     </section>
 
 </main>
+
+<style>
+    .volunteer-signup-form {
+        max-width: 650px;
+    }
+
+    .signup-field {
+        margin-bottom: 1.75rem;
+    }
+
+    .signup-label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .signup-help {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .role-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .role-option {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        min-height: 24px;
+    }
+
+    .role-option input[type="radio"] {
+        margin: 0;
+        flex: 0 0 auto;
+    }
+
+    .role-option label {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .telescope-input {
+        max-width: 140px;
+    }
+
+    .telescope-input input {
+        display: block;
+        width: 100%;
+    }
+
+    .volunteer-signup-form textarea {
+        display: block;
+        width: 100%;
+        min-height: 110px;
+        resize: vertical;
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const roleInputs = document.querySelectorAll(
+        'input[name="role"]'
+    );
+
+    const telescopeSection = document.getElementById(
+        "telescope-count-section"
+    );
+
+    const telescopeInput = document.getElementById(
+        "{{ signup_form.telescope_count.id_for_label }}"
+    );
+
+    if (!roleInputs.length || !telescopeSection) {
+        return;
+    }
+
+    function updateTelescopeField() {
+        const selectedRole = document.querySelector(
+            'input[name="role"]:checked'
+        );
+
+        const isTelescope =
+            selectedRole &&
+            selectedRole.value === "TELESCOPE";
+
+        telescopeSection.style.display =
+            isTelescope ? "block" : "none";
+
+        if (!telescopeInput) {
+            return;
+        }
+
+        if (isTelescope) {
+            telescopeInput.min = "1";
+
+            if (
+                !telescopeInput.value ||
+                Number(telescopeInput.value) < 1
+            ) {
+                telescopeInput.value = "1";
+            }
+        } else {
+            telescopeInput.value = "0";
+        }
+    }
+
+    roleInputs.forEach(function (input) {
+        input.addEventListener(
+            "change",
+            updateTelescopeField
+        );
+    });
+
+    updateTelescopeField();
+});
+</script>
+
 {% endblock %}

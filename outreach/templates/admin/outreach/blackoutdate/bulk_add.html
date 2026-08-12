@@ -1,0 +1,65 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+
+<div id="content-main">
+
+    <h1>Bulk Add Blackout Dates</h1>
+
+    <p>
+        Enter one blackout date per line using:
+    </p>
+
+    <pre>YYYY-MM-DD | Reason</pre>
+
+    <p>Example:</p>
+
+    <pre>
+2026-08-15 | Austin Under the Stars
+2026-11-26 | Thanksgiving
+2026-12-24 | Christmas Eve
+2026-12-25 | Christmas Day
+2026-12-31 | New Year's Eve
+    </pre>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div style="margin-top: 20px; margin-bottom: 20px;">
+
+            <textarea
+                name="blackout_dates"
+                rows="18"
+                style="
+                    width: 100%;
+                    max-width: 900px;
+                    font-family: monospace;
+                    padding: 12px;
+                "
+                placeholder="2026-08-15 | Austin Under the Stars&#10;2026-12-25 | Christmas Day"
+            >{% if request.POST.blackout_dates %}{{ request.POST.blackout_dates }}{% endif %}</textarea>
+
+        </div>
+
+        <div class="submit-row">
+
+            <input
+                type="submit"
+                value="Add Blackout Dates"
+                class="default"
+            >
+
+            <a
+                href="{% url 'admin:outreach_blackoutdate_changelist' %}"
+                style="margin-left: 15px;"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

@@ -1,11 +1,9 @@
 ##scheduler logic based on varaibles entered for each venue. This is aimed at automating the yearly schedule for recurrent partners. One offs are added manually.
 
-
 from datetime import datetime, timedelta
-from outreach.models import Partner, SuggestedEvent
+from outreach.models import BlackoutDate, Partner, SuggestedEvent
 from outreach.services.astronomy import calculate_moon_info
 from outreach.services.astronomy import calculate_twilight_times, round_to_nearest_half_hour
-import holidays
 from collections import defaultdict
 
 
@@ -50,17 +48,6 @@ def partner_allows_calendar_date(partner, event_date):
 
     return True
 
-def date_is_in_holiday_week(event_date):
-    us_holidays = holidays.US(years=event_date.year)
-
-    week_start = event_date - timedelta(days=event_date.weekday())
-    week_end = week_start + timedelta(days=6)
-
-    for holiday_date in us_holidays:
-        if week_start <= holiday_date <= week_end:
-            return True
-
-    return False
 
 def partner_allows_moon(partner, event_date):
     moon_data = calculate_moon_info(
@@ -87,6 +74,13 @@ def partner_date_was_rejected(partner, event_date):
     ).exists()
 
 
+def date_is_blackout(event_date):
+    return BlackoutDate.objects.filter(
+        blackout_date=event_date,
+        active=True,
+    ).exists()
+
+
 def partner_already_has_active_suggestion(partner):
     return SuggestedEvent.objects.filter(
         partner=partner,
@@ -99,10 +93,11 @@ def generate_partner_candidate_dates(partner, start_date, end_date):
     current_date = start_date
 
     while current_date <= end_date:
-        if partner_date_was_rejected(partner, current_date):
+        if date_is_blackout(current_date):
             current_date += timedelta(days=1)
             continue
-        if date_is_in_holiday_week(current_date):
+
+        if partner_date_was_rejected(partner, current_date):
             current_date += timedelta(days=1)
             continue
 
@@ -175,6 +170,7 @@ def build_candidate_pool(start_date, end_date):
 
     return candidates
 
+
 def get_allowed_month_numbers(partner, start_date, end_date):
     if partner.allowed_months:
         allowed_months = sorted(int(m) for m in partner.allowed_months)
@@ -201,6 +197,7 @@ def get_allowed_month_numbers(partner, start_date, end_date):
 
     return sorted(set(months_in_range))
 
+
 def get_target_months_for_partner(partner, start_date, end_date):
     allowed_months = get_allowed_month_numbers(partner, start_date, end_date)
 
@@ -220,6 +217,7 @@ def get_target_months_for_partner(partner, start_date, end_date):
 
     return sorted(set(target_months))
 
+
 def get_month_spacing_score(partner, event_date, target_months, selected_months):
     if partner.events_per_year > 12:
         return 0
@@ -236,6 +234,7 @@ def get_month_spacing_score(partner, event_date, target_months, selected_months)
     )
 
     return 500 - (closest_target_distance * 100)
+
 
 def choose_best_candidate_for_partner_slot(
     partner,

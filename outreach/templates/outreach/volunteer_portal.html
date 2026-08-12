@@ -7,13 +7,23 @@
 
     <section class="mb-5">
         <p class="eyebrow text-muted">Volunteer Portal</p>
-        <h1>Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+
+        <h1>
+            Welcome, {{ request.user.first_name|default:request.user.username }}
+        </h1>
 
         {% if volunteer %}
             <p class="text-muted">
                 You are signed in as {{ volunteer.volunteer_name }}.
             </p>
         {% endif %}
+
+        <div class="mt-3">
+            <a href="{% url 'volunteer_calendar' %}"
+               class="btn btn-aas-gold">
+                View Outreach Calendar
+            </a>
+        </div>
     </section>
 
     {% if volunteer %}
@@ -23,29 +33,40 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="h4 mb-0">Your Volunteer Profile</h2>
 
-                    <a href="{% url 'edit_volunteer_profile' %}" class="btn btn-outline-secondary btn-sm">
+                    <a href="{% url 'edit_volunteer_profile' %}"
+                       class="btn btn-outline-secondary btn-sm">
                         Edit Profile
                     </a>
                 </div>
 
-                <p class="mb-1"><strong>Email:</strong> {{ volunteer.email }}</p>
+                <p class="mb-1">
+                    <strong>Email:</strong> {{ volunteer.email }}
+                </p>
 
                 {% if volunteer.phone %}
-                    <p class="mb-1"><strong>Phone:</strong> {{ volunteer.phone }}</p>
+                    <p class="mb-1">
+                        <strong>Phone:</strong> {{ volunteer.phone }}
+                    </p>
                 {% endif %}
 
                 {% if volunteer.equipment_owned %}
-                    <p class="mb-1"><strong>Equipment:</strong></p>
+                    <p class="mb-1">
+                        <strong>Equipment:</strong>
+                    </p>
+
                     <pre class="volunteer-equipment">{{ volunteer.equipment_owned }}</pre>
                 {% else %}
-                    <p class="text-muted mb-0">No equipment listed yet.</p>
+                    <p class="text-muted mb-0">
+                        No equipment listed yet.
+                    </p>
                 {% endif %}
 
             </div>
         </section>
     {% endif %}
 
-    <!-- MY EVENTS -->
+
+    <!-- MY UPCOMING EVENTS -->
 
     <section class="mb-5">
 
@@ -62,13 +83,15 @@
 
                     <div class="col-md-6 col-lg-4">
 
-                        <article class="card h-100 event-card signed-up-event-card position-relative">
+                        <article class="card h-100 event-card signed-up-event-card">
 
-                            <div class="card-body">
+                            <div class="card-body d-flex flex-column">
 
-                                <span class="volunteer-badge">
-                                    ✓ You're Volunteering
-                                </span>
+                                <div class="mb-3">
+                                    <span class="badge bg-success">
+                                        ✓ You're Volunteering
+                                    </span>
+                                </div>
 
                                 <h3 class="card-title h5">
                                     {{ event.event_name }}
@@ -77,14 +100,21 @@
                                 <p class="card-text">
 
                                     <strong>Date:</strong>
-                                    {{ event.event_date|date:"F j, Y" }}<br>
+                                    {{ event.event_date|date:"F j, Y" }}
+                                    <br>
 
                                     <strong>Time:</strong>
-                                    {{ event.start_time|time:"g:i A" }}
+
+                                    {% if event.start_time %}
+                                        {{ event.start_time|time:"g:i A" }}
+                                    {% else %}
+                                        TBD
+                                    {% endif %}
 
                                     {% if event.end_time %}
                                         – {{ event.end_time|time:"g:i A" }}
                                     {% endif %}
+
                                     <br>
 
                                     {% if event.partner %}
@@ -104,7 +134,9 @@
                                     <form method="post"
                                           action="{% url 'cancel_volunteer_for_event' event.id %}">
                                         {% csrf_token %}
-                                        <button class="btn btn-outline-danger btn-sm">
+
+                                        <button type="submit"
+                                                class="btn btn-outline-danger btn-sm w-100">
                                             Cancel Signup
                                         </button>
                                     </form>
@@ -131,12 +163,15 @@
 
     </section>
 
+
     <div class="portal-divider">
         ✦ ✦ ✦
     </div>
+
+
     <!-- AVAILABLE EVENTS -->
 
-    <section>
+    <section class="mb-5">
 
         <div class="mb-4" id="available-events">
             <p class="eyebrow text-muted">Next 12 Months</p>
@@ -153,7 +188,13 @@
 
                         <article class="card h-100 event-card">
 
-                            <div class="card-body">
+                            <div class="card-body d-flex flex-column">
+
+                                {% if event.volunteer_signup_full %}
+                                    <span class="badge bg-secondary mb-3 align-self-start">
+                                        Event Full
+                                    </span>
+                                {% endif %}
 
                                 <h3 class="card-title h5">
                                     {{ event.event_name }}
@@ -162,37 +203,63 @@
                                 <p class="card-text">
 
                                     <strong>Date:</strong>
-                                    {{ event.event_date|date:"F j, Y" }}<br>
+                                    {{ event.event_date|date:"F j, Y" }}
+                                    <br>
 
                                     <strong>Time:</strong>
-                                    {{ event.start_time|time:"g:i A" }}
+
+                                    {% if event.start_time %}
+                                        {{ event.start_time|time:"g:i A" }}
+                                    {% else %}
+                                        TBD
+                                    {% endif %}
 
                                     {% if event.end_time %}
                                         – {{ event.end_time|time:"g:i A" }}
                                     {% endif %}
+
                                     <br>
 
                                     {% if event.partner %}
                                         <strong>Partner:</strong>
                                         {{ event.partner }}
+                                        <br>
+                                    {% endif %}
+
+                                    <strong>Volunteers:</strong>
+                                    {{ event.volunteer_count }}
+
+                                    {% if event.volunteer_capacity %}
+                                        of {{ event.volunteer_capacity }}
+                                    {% else %}
+                                        <span class="text-muted">(Unlimited)</span>
                                     {% endif %}
 
                                 </p>
 
-                                <div class="d-grid gap-2">
+                                <div class="d-grid gap-2 mt-auto">
 
                                     <a href="{% url 'volunteer_event_detail' event.id %}"
                                        class="btn btn-outline-secondary btn-sm">
                                         View Event Details
                                     </a>
 
-                                    <form method="post"
-                                          action="{% url 'volunteer_for_event' event.id %}">
-                                        {% csrf_token %}
-                                        <button class="btn btn-aas-gold btn-sm">
-                                            Volunteer for this Event
+                                    {% if event.volunteer_signup_full %}
+
+                                        <button type="button"
+                                                class="btn btn-secondary btn-sm"
+                                                disabled>
+                                            Event Full
                                         </button>
-                                    </form>
+
+                                    {% else %}
+
+                                        <a href="{% url 'volunteer_event_detail' event.id %}"
+                                           class="btn btn-aas-gold btn-sm">
+                                            Volunteer for this Event
+                                        </a>
+
+                                    {% endif %}
 
                                 </div>
 
@@ -210,6 +277,97 @@
 
             <div class="alert alert-success">
                 You're signed up for every currently available event!
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <div class="portal-divider">
+        ✦ ✦ ✦
+    </div>
+
+
+    <!-- PREVIOUS EVENTS -->
+
+    <section class="mb-5">
+
+        <div class="mb-4">
+            <p class="eyebrow text-muted">Volunteer History</p>
+            <h2>My Previous Events</h2>
+        </div>
+
+        {% if previous_events %}
+
+            <div class="row g-4">
+
+                {% for event in previous_events %}
+
+                    <div class="col-md-6 col-lg-4">
+
+                        <article class="card h-100 event-card">
+
+                            <div class="card-body d-flex flex-column">
+
+                                <span class="badge bg-secondary mb-3 align-self-start">
+                                    Previous Event
+                                </span>
+
+                                <h3 class="card-title h5">
+                                    {{ event.event_name }}
+                                </h3>
+
+                                <p class="card-text">
+
+                                    <strong>Date:</strong>
+                                    {{ event.event_date|date:"F j, Y" }}
+                                    <br>
+
+                                    <strong>Time:</strong>
+
+                                    {% if event.start_time %}
+                                        {{ event.start_time|time:"g:i A" }}
+                                    {% else %}
+                                        TBD
+                                    {% endif %}
+
+                                    {% if event.end_time %}
+                                        – {{ event.end_time|time:"g:i A" }}
+                                    {% endif %}
+
+                                    <br>
+
+                                    {% if event.partner %}
+                                        <strong>Partner:</strong>
+                                        {{ event.partner }}
+                                    {% endif %}
+
+                                </p>
+
+                                <div class="d-grid mt-auto">
+
+                                    <a href="{% url 'volunteer_event_detail' event.id %}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        View Event Details
+                                    </a>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="alert alert-light border">
+                You don't have any previous volunteer events yet.
             </div>
 
         {% endif %}
