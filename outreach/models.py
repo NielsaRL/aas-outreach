@@ -564,7 +564,8 @@ class EventVolunteer(models.Model):
     )
 
     telescope_count = models.PositiveIntegerField(
-        default=0,
+        null=True,
+        blank=True,
         help_text="Number of telescopes this volunteer plans to bring.",
     )
 
@@ -573,14 +574,17 @@ class EventVolunteer(models.Model):
     def clean(self):
         super().clean()
 
-        if self.role == "TELESCOPE" and self.telescope_count < 1:
-            raise ValidationError(
-                {
-                    "telescope_count": (
-                        "Telescope volunteers must bring at least one telescope."
-                    )
-                }
-            )
+        if self.role == "TELESCOPE":
+            if self.telescope_count is None or self.telescope_count < 1:
+                raise ValidationError(
+                    {
+                        "telescope_count": (
+                            "Telescope volunteers must bring at least one telescope."
+                        )
+                    }
+                )
+        else:
+            self.telescope_count = None
 
     def __str__(self):
         return f"{self.volunteer.volunteer_name} - {self.event.event_name}"

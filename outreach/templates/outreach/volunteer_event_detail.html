@@ -357,7 +357,6 @@
                     {% endfor %}
                 </div>
 
-
                 <!-- TELESCOPE COUNT -->
 
                 <div
@@ -387,7 +386,6 @@
                     {% endfor %}
                 </div>
 
-
                 <!-- NOTES -->
 
                 <div class="signup-field">
@@ -410,7 +408,6 @@
                         </div>
                     {% endfor %}
                 </div>
-
 
                 <button
                     type="submit"
@@ -502,7 +499,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "{{ signup_form.telescope_count.id_for_label }}"
     );
 
-    if (!roleInputs.length || !telescopeSection) {
+    if (!roleInputs.length || !telescopeSection || !telescopeInput) {
         return;
     }
 
@@ -515,14 +512,8 @@ document.addEventListener("DOMContentLoaded", function () {
             selectedRole &&
             selectedRole.value === "TELESCOPE";
 
-        telescopeSection.style.display =
-            isTelescope ? "block" : "none";
-
-        if (!telescopeInput) {
-            return;
-        }
-
         if (isTelescope) {
+            telescopeSection.style.display = "block";
             telescopeInput.min = "1";
 
             if (
@@ -532,10 +523,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 telescopeInput.value = "1";
             }
         } else {
-            telescopeInput.min = "0";
-            telescopeInput.value = "0";
+            telescopeSection.style.display = "none";
+            telescopeInput.removeAttribute("min");
+            telescopeInput.value = "";
         }
     }
+
+    roleInputs.forEach(function (input) {
+        input.addEventListener(
+            "change",
+            updateTelescopeField
+        );
+    });
 
     updateTelescopeField();
 });

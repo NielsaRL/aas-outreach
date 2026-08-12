@@ -64,10 +64,13 @@ class EventVolunteerSignupForm(forms.ModelForm):
         role = cleaned_data.get("role")
         telescope_count = cleaned_data.get("telescope_count")
 
-        if role == "TELESCOPE" and not telescope_count:
-            self.add_error(
-                "telescope_count",
-                "Please enter how many telescopes you are bringing.",
-            )
+        if role == "TELESCOPE":
+            if telescope_count is None or telescope_count < 1:
+                self.add_error(
+                    "telescope_count",
+                    "Please enter how many telescopes you are bringing.",
+                )
+        else:
+            cleaned_data["telescope_count"] = None
 
         return cleaned_data
