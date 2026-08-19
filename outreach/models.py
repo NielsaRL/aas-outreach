@@ -1643,3 +1643,63 @@ class AdvertisingPlaybook(models.Model):
 
     def __str__(self):
         return self.name
+
+class PartnerLocationResource(models.Model):
+    partner = models.ForeignKey(
+        Partner,
+        on_delete=models.CASCADE,
+        related_name="location_resources",
+    )
+
+    file = models.FileField(
+        upload_to="partner_location_resources/",
+    )
+
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    sort_order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    active = models.BooleanField(
+        default=True,
+    )
+
+    class Meta:
+        ordering = (
+            "sort_order",
+            "id",
+        )
+
+    def __str__(self):
+        if self.caption:
+            return f"{self.partner} — {self.caption}"
+
+        return f"{self.partner} — Location Resource"
+
+    @property
+    def is_image(self):
+        if not self.file:
+            return False
+
+        filename = self.file.name.lower()
+
+        return filename.endswith(
+            (
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".webp",
+            )
+        )
+
+    @property
+    def is_pdf(self):
+        if not self.file:
+            return False
+
+        return self.file.name.lower().endswith(".pdf")

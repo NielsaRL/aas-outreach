@@ -79,24 +79,6 @@
                 <strong>{{ event.host.volunteer_name }}</strong>
             </p>
 
-            {% if event.host.email %}
-                <p class="mb-1">
-                    <strong>Email:</strong>
-                    <a href="mailto:{{ event.host.email }}">
-                        {{ event.host.email }}
-                    </a>
-                </p>
-            {% endif %}
-
-            {% if event.host.phone %}
-                <p class="mb-0">
-                    <strong>Phone:</strong>
-                    <a href="tel:{{ event.host.phone }}">
-                        {{ event.host.phone }}
-                    </a>
-                </p>
-            {% endif %}
-
         {% elif event.manual_host_name %}
             <p class="mb-0">
                 <strong>{{ event.manual_host_name }}</strong>
@@ -147,6 +129,77 @@
             {% if event.partner.setup_location_notes %}
                 <p><strong>Setup Location:</strong></p>
                 {{ event.partner.setup_location_notes|linebreaks }}
+            {% endif %}
+
+            {% if location_resources %}
+                <div class="mt-4">
+                    <h3 class="h6 mb-3">Location Resources</h3>
+
+                    <div class="row g-3">
+                        {% for resource in location_resources %}
+                            <div class="col-6 col-md-4 col-lg-3">
+
+                                {% if resource.is_image %}
+
+                                    <a
+                                        href="{{ resource.file.url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-decoration-none"
+                                    >
+                                        <img
+                                            src="{{ resource.file.url }}"
+                                            alt="{{ resource.caption|default:'Location resource' }}"
+                                            class="img-fluid rounded border location-resource-thumbnail"
+                                        >
+                                    </a>
+
+                                {% elif resource.is_pdf %}
+
+                                    <a
+                                        href="{{ resource.file.url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="location-resource-file text-decoration-none"
+                                    >
+                                        <div class="location-resource-icon">
+                                            PDF
+                                        </div>
+
+                                        <div class="location-resource-action">
+                                            Open PDF
+                                        </div>
+                                    </a>
+
+                                {% else %}
+
+                                    <a
+                                        href="{{ resource.file.url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="location-resource-file text-decoration-none"
+                                    >
+                                        <div class="location-resource-icon">
+                                            FILE
+                                        </div>
+
+                                        <div class="location-resource-action">
+                                            Open File
+                                        </div>
+                                    </a>
+
+                                {% endif %}
+
+                                {% if resource.caption %}
+                                    <div class="small text-muted mt-2">
+                                        {{ resource.caption }}
+                                    </div>
+                                {% endif %}
+
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             {% endif %}
         </section>
     {% endif %}
@@ -329,8 +382,6 @@
                     </div>
                 {% endif %}
 
-                <!-- ROLE -->
-
                 <div class="signup-field">
                     <div class="signup-label">
                         How would you like to help?
@@ -356,8 +407,6 @@
                         </div>
                     {% endfor %}
                 </div>
-
-                <!-- TELESCOPE COUNT -->
 
                 <div
                     class="signup-field"
@@ -385,8 +434,6 @@
                         </div>
                     {% endfor %}
                 </div>
-
-                <!-- NOTES -->
 
                 <div class="signup-field">
                     <label
@@ -482,6 +529,53 @@
         width: 100%;
         min-height: 110px;
         resize: vertical;
+    }
+
+    .location-resource-thumbnail {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        cursor: zoom-in;
+    }
+
+    .location-resource-file {
+        display: flex;
+        height: 160px;
+        padding: 1rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background: #f8f9fa;
+        color: #212529;
+        transition:
+            transform 0.12s ease,
+            box-shadow 0.12s ease;
+    }
+
+    .location-resource-file:hover {
+        color: #212529;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    }
+
+    .location-resource-icon {
+        display: flex;
+        width: 70px;
+        height: 70px;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #6c757d;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .location-resource-action {
+        font-size: 0.8rem;
+        font-weight: 600;
     }
 </style>
 

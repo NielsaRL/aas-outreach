@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from outreach import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -31,3 +33,9 @@ urlpatterns = [
     path("portal/events/<int:event_id>/", views.volunteer_event_detail, name="volunteer_event_detail"),
     path("portal/profile/", views.edit_volunteer_profile, name="edit_volunteer_profile"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT,
+    )

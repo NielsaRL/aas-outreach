@@ -338,6 +338,13 @@ def volunteer_event_detail(request, event_id):
 
     event_targets = event.event_targets.select_related("target").all()
 
+    location_resources = []
+
+    if event.partner:
+        location_resources = event.partner.location_resources.filter(
+            active=True
+        )
+
     signup_form = None
 
     if not is_signed_up and not event.volunteer_signup_full:
@@ -354,6 +361,7 @@ def volunteer_event_detail(request, event_id):
             "signup_form": signup_form,
             "event_volunteers": event_volunteers,
             "event_targets": event_targets,
+            "location_resources": location_resources,
         },
     )
 

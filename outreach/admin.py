@@ -15,7 +15,7 @@ import csv
 from django.utils.dateparse import parse_date
 from datetime import date, timedelta
 import calendar
-from .models import EventChecklist, Partner, Volunteer, ScheduledEvent, BlackoutDate, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem, AdvertisingOutlet, AdvertisingCampaign, EventAdvertisement, AdvertisingPlaybook
+from .models import EventChecklist, Partner, PartnerLocationResource, Volunteer, ScheduledEvent, BlackoutDate, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem, AdvertisingOutlet, AdvertisingCampaign, EventAdvertisement, AdvertisingPlaybook
 
 class EventVolunteerInlineForm(forms.ModelForm):
     class Meta:
@@ -124,7 +124,7 @@ class EventChecklistItemInlineForm(forms.ModelForm):
     class Meta:
         model = EventChecklistItem
         fields = "__all__"
-        
+
         widgets = {
             "notes": forms.Textarea(
                 attrs={
@@ -138,7 +138,7 @@ class EventChecklistItemInline(admin.TabularInline):
     form = EventChecklistItemInlineForm
     extra = 0
     show_change_link = False
-    ordering = ("due_date", "title")    
+    ordering = ("due_date", "title")
 
     fields = (
         "title",
@@ -186,6 +186,16 @@ class EventAdvertisementInline(admin.TabularInline):
         "submitted_by",
         "published_url",
         "notes",
+    )
+class PartnerLocationResourceInline(admin.TabularInline):
+    model = PartnerLocationResource
+    extra = 1
+
+    fields = (
+        "file",
+        "caption",
+        "sort_order",
+        "active",
     )
 
 @admin.register(Partner)
@@ -282,10 +292,14 @@ class PartnerAdmin(admin.ModelAdmin):
         "notes",
     )
 
+    inlines = [
+        PartnerLocationResourceInline,
+    ]
+
     readonly_fields = ("auto_bortle_class",)
 
     ordering = ("partner_name",)
-    
+
 
 @admin.register(Volunteer)
 class VolunteerAdmin(admin.ModelAdmin):
@@ -515,7 +529,7 @@ class ScheduledEventAdmin(admin.ModelAdmin):
                 "admin/outreach/blackoutdate/bulk_add.html",
                 context,
             )
-    
+
     @admin.action(description="Generate advertising campaigns")
     def generate_advertising_campaigns(self, request, queryset):
         campaign_count = 0
