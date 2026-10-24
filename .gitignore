@@ -17,3 +17,18 @@ media/
 # OS files
 Thumbs.db
 .DS_Store
+
+# Python virtual environments
+venv/
+
+# Local databases
+*.sqlite3
+
+# Local configuration backups
+*.bak
+config/settings_legacy.py
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
