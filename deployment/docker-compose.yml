@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: ../../.env
+    volumes:
+      - ../../data/postgres:/var/lib/postgresql/data
+
+  web:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    restart: unless-stopped
+    env_file: ../../.env
+    depends_on:
+      - db
+    volumes:
+      - ../../data/static:/app/staticfiles
+      - ../../data/media:/app/media
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
+
+  caddy:
+    image: aas-outreach-caddy:2.11.4-ratelimit
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ../../data/static:/srv/static
+      - ../../data/media:/srv/media
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

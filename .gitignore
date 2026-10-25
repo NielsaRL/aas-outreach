@@ -32,3 +32,17 @@ config/settings_legacy.py
 .env
 .env.*
 !.env.example
+# Production data and persistent storage
+data/
+deployment/data/
+
+# Deployment backups and temporary configurations
+*.backup
+*.backup.*
+*.test
+*.ratelimit-test
+*.clientip-test
+
+# Local deployment overrides
+docker-compose.override.yml
+deployment/docker-compose.override.yml

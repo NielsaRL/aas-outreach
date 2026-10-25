@@ -59,3 +59,5 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_TIMEOUT = 15
+# Password reset links expire after 30 minutes.
+PASSWORD_RESET_TIMEOUT = 1800
