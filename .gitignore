@@ -17,3 +17,6 @@ media/
 # OS files
 Thumbs.db
 .DS_Store
+# Local SQLite databases and backups
+*.sqlite3
+*.sqlite3.backup
