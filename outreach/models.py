@@ -46,6 +46,22 @@ class Partner(models.Model):
     priority = models.IntegerField(default=3)
     events_per_year = models.IntegerField(default=1)
 
+    SCHEDULING_STRATEGY_CHOICES = [
+        ("STRICT", "Strict — Evenly Distributed"),
+        ("FLEXIBLE", "Flexible — Dark-Sky Priority"),
+    ]
+
+    scheduling_strategy = models.CharField(
+        max_length=10,
+        choices=SCHEDULING_STRATEGY_CHOICES,
+        default="STRICT",
+        help_text=(
+            "Strict scheduling favors evenly distributed events. "
+            "Flexible scheduling prioritizes observing conditions "
+            "while maintaining minimum spacing between events."
+        ),
+    )
+
     WEEKDAY_CHOICES = [
         ("0", "Monday"),
         ("1", "Tuesday"),
@@ -313,6 +329,32 @@ class ScheduledEvent(models.Model):
         help_text="Check this once the event date has been confirmed."
     )
 
+    allow_scheduling_conflict = models.BooleanField(
+        default=False,
+        help_text=(
+            "Check this to intentionally allow another active "
+            "event to be scheduled on the same date."
+        ),
+    )
+
+    allow_blackout_override = models.BooleanField(
+        "Allow scheduling during blackout",
+        default=False,
+        help_text=(
+            "Override a one-time or recurring scheduling blackout "
+            "for this event. This does not override conflicts "
+            "with other scheduled events."
+        ),
+    )
+
+    allow_volunteer_registration = models.BooleanField(
+        default=True,
+        help_text=(
+            "Uncheck for information-only events that do not "
+            "require volunteer registration."
+        ),
+    )
+
     host = models.ForeignKey(
         Volunteer,
         on_delete=models.SET_NULL,
@@ -405,6 +447,57 @@ class ScheduledEvent(models.Model):
         help_text="Special instructions for this event only. Use the Partner record for recurring location instructions."
     )
     notes = models.TextField(blank=True)
+
+    def clean(self):
+        super().clean()
+
+        if not self.event_date:
+            return
+
+        # Cancelled events do not block scheduling.
+        if self.status == "CANCELLED":
+            return
+
+        errors = []
+
+        # 1. Check for existing events on the same date.
+        if not self.allow_scheduling_conflict:
+            conflicting_events = ScheduledEvent.objects.filter(
+                event_date=self.event_date
+            ).exclude(
+                status="CANCELLED"
+            ).exclude(
+                pk=self.pk
+            )
+
+            if conflicting_events.exists():
+                conflicting_names = ", ".join(
+                    conflicting_events.values_list("event_name", flat=True)[:5]
+                )
+
+                errors.append(
+                    "Another event is already scheduled for this date: "
+                    f"{conflicting_names}. "
+                    "To schedule multiple events on this date, "
+                    "check 'Allow scheduling conflict'."
+                )
+
+        # 2. Check one-time and recurring scheduling blackouts.
+        if not self.allow_blackout_override:
+            from outreach.services.scheduler import date_is_blackout
+
+            if date_is_blackout(self.event_date):
+                errors.append(
+                    "This date is unavailable due to a scheduling blackout. "
+                    "To schedule an event on this date, "
+                    "check 'Allow scheduling during blackout'."
+                )
+
+        # Report all applicable scheduling restrictions.
+        if errors:
+            raise ValidationError({
+                "event_date": errors
+            })
 
     def host_display(self):
         if self.host:
@@ -512,6 +605,80 @@ class EventChecklist(ScheduledEvent):
         verbose_name = "Event Checklist"
         verbose_name_plural = "Event Checklists"
 
+class RecurringBlackoutRule(models.Model):
+
+    OCCURRENCE_CHOICES = [
+        (1, "First"),
+        (2, "Second"),
+        (3, "Third"),
+        (4, "Fourth"),
+        (5, "Fifth"),
+        (-1, "Last"),
+    ]
+
+    WEEKDAY_CHOICES = [
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+        (5, "Saturday"),
+        (6, "Sunday"),
+        (7, "Last weekday (Monday–Friday)"),
+    ]
+
+    occurrence = models.IntegerField(
+        choices=OCCURRENCE_CHOICES,
+        help_text="Which occurrence of the selected weekday is unavailable.",
+    )
+
+    weekday = models.IntegerField(
+        choices=WEEKDAY_CHOICES,
+        help_text="Day of the week to block.",
+    )
+
+    month = models.PositiveSmallIntegerField(
+        choices=[
+            (0, "Every month"),
+            (1, "January"),
+            (2, "February"),
+            (3, "March"),
+            (4, "April"),
+            (5, "May"),
+            (6, "June"),
+            (7, "July"),
+            (8, "August"),
+            (9, "September"),
+            (10, "October"),
+            (11, "November"),
+            (12, "December"),
+        ],
+        default=0,
+        help_text="Apply this rule every month or only in a specific month.",
+    )
+
+    reason = models.CharField(
+        max_length=255,
+        help_text="Reason these recurring dates are unavailable.",
+    )
+
+    active = models.BooleanField(
+        default=True,
+        help_text="Uncheck to temporarily disable this blackout rule.",
+    )
+
+    class Meta:
+        ordering = ("month", "weekday", "occurrence")
+        verbose_name = "Recurring Blackout Rule"
+        verbose_name_plural = "Recurring Blackout Rules"
+
+    def __str__(self):
+        return (
+            f"{self.get_occurrence_display()} "
+            f"{self.get_weekday_display()} "
+            f"({self.get_month_display()}) — {self.reason}"
+        )
+
 class BlackoutDate(models.Model):
     blackout_date = models.DateField(
         unique=True,
@@ -527,6 +694,17 @@ class BlackoutDate(models.Model):
         default=True,
         help_text="Uncheck to allow this date to be scheduled without deleting the blackout record.",
     )
+
+    def clean(self):
+        super().clean()
+
+        if self.weekday == 7 and self.occurrence != -1:
+            raise ValidationError({
+                "occurrence": (
+                    "When selecting Last weekday (Monday–Friday), "
+                    "the occurrence must be Last."
+                )
+            })
 
     class Meta:
         ordering = ("blackout_date",)

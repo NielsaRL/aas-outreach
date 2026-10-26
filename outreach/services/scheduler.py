@@ -1,7 +1,7 @@
 ##scheduler logic based on varaibles entered for each venue. This is aimed at automating the yearly schedule for recurrent partners. One offs are added manually.
 
 from datetime import datetime, timedelta
-from outreach.models import BlackoutDate, Partner, SuggestedEvent
+from outreach.models import BlackoutDate, RecurringBlackoutRule, ScheduledEvent, Partner, SuggestedEvent
 from outreach.services.astronomy import calculate_moon_info
 from outreach.services.astronomy import calculate_twilight_times, round_to_nearest_half_hour
 from collections import defaultdict
@@ -75,16 +75,67 @@ def partner_date_was_rejected(partner, event_date):
 
 
 def date_is_blackout(event_date):
-    return BlackoutDate.objects.filter(
+    # Check individual blackout dates first.
+    if BlackoutDate.objects.filter(
         blackout_date=event_date,
         active=True,
-    ).exists()
+    ).exists():
+        return True
+
+    # Check recurring blackout rules for this month.
+    rules = RecurringBlackoutRule.objects.filter(
+        active=True,
+        month__in=[0, event_date.month],
+    )
+
+    for rule in rules:
+
+        # Special case: last Monday-Friday date of the month.
+        if rule.weekday == 7:
+            if rule.occurrence != -1:
+                continue
+
+            next_week = event_date + timedelta(days=7)
+
+            if (
+                event_date.weekday() < 5
+                and next_week.month != event_date.month
+                and not any(
+                    (event_date + timedelta(days=offset)).month
+                    == event_date.month
+                    and (event_date + timedelta(days=offset)).weekday() < 5
+                    for offset in range(1, 4)
+                )
+            ):
+                return True
+
+            continue
+
+        # Ordinary weekday rules.
+        if event_date.weekday() != rule.weekday:
+            continue
+
+        occurrence = get_weekday_occurrence_in_month(event_date)
+
+        if rule.occurrence == occurrence:
+            return True
+
+        # Last occurrence of this weekday in the month.
+        if rule.occurrence == -1:
+            next_occurrence = event_date + timedelta(days=7)
+
+            if next_occurrence.month != event_date.month:
+                return True
+
+    return False
 
 
-def partner_already_has_active_suggestion(partner):
+def partner_already_has_active_suggestion(partner, start_date, end_date):
     return SuggestedEvent.objects.filter(
         partner=partner,
         status__in=["SUGGESTED", "APPROVED"],
+        suggested_date__gte=start_date,
+        suggested_date__lte=end_date,
     ).count()
 
 
@@ -150,7 +201,11 @@ def build_candidate_pool(start_date, end_date):
     )
 
     for partner in partners:
-        needed_count = partner.events_per_year - partner_already_has_active_suggestion(partner)
+        needed_count = partner.events_per_year - partner_already_has_active_suggestion(
+            partner,
+            start_date,
+            end_date,
+        )
 
         if needed_count <= 0:
             continue
@@ -235,6 +290,56 @@ def get_month_spacing_score(partner, event_date, target_months, selected_months)
 
     return 500 - (closest_target_distance * 100)
 
+def partner_date_has_spacing_conflict(
+    event_date,
+    partner_dates,
+    minimum_gap_days=21,
+):
+    """
+    Return True if the proposed date is too close to
+    another event belonging to the same partner.
+
+    A gap of exactly 21 days is permitted.
+    """
+    return any(
+        abs((event_date - existing_date).days) < minimum_gap_days
+        for existing_date in partner_dates
+    )
+
+def calculate_flexible_candidate_score(
+    candidate,
+    target_month,
+    partner_dates,
+    spacing_penalty_per_day=0.5,
+):
+    """
+    Rank a candidate using astronomical suitability and
+    a soft preference for annual distribution.
+
+    The 21-day minimum is enforced separately.
+    """
+
+    event_date = candidate["event_date"]
+
+    # Astronomical suitability, including partner preferences.
+    score = candidate["score"]
+
+    # Prefer the intended target month, but allow alternatives.
+    month_distance = abs(event_date.month - target_month)
+    score -= month_distance * 8
+
+    # Discourage events from being clustered together.
+    if partner_dates:
+        nearest_gap = min(
+            abs((event_date - existing_date).days)
+            for existing_date in partner_dates
+        )
+
+        # Prefer at least six weeks between events where practical.
+        if nearest_gap < 42:
+            score -= (42 - nearest_gap) * spacing_penalty_per_day
+
+    return score
 
 def choose_best_candidate_for_partner_slot(
     partner,
@@ -243,36 +348,66 @@ def choose_best_candidate_for_partner_slot(
     used_dates,
     existing_suggested_dates,
     used_months,
+    partner_dates,
 ):
     valid_candidates = []
 
     for candidate in partner_candidates:
         event_date = candidate["event_date"]
 
+        # Hard constraints apply to BOTH strategies.
         if event_date in used_dates:
             continue
 
         if event_date in existing_suggested_dates:
             continue
 
-        if partner.events_per_year <= 12 and event_date.month in used_months:
+        if partner_date_has_spacing_conflict(
+            event_date=event_date,
+            partner_dates=partner_dates,
+            minimum_gap_days=21,
+        ):
             continue
 
-        month_distance = abs(event_date.month - target_month)
+        # Strict partners cannot have multiple events
+        # in the same month.
+        if partner.scheduling_strategy == "STRICT":
+            if (
+                partner.events_per_year <= 12
+                and event_date.month in used_months
+            ):
+                continue
+
+        if partner.scheduling_strategy == "FLEXIBLE":
+            ranking_score = calculate_flexible_candidate_score(
+                candidate=candidate,
+                target_month=target_month,
+                partner_dates=partner_dates,
+            )
+
+            sort_key = (
+                -ranking_score,
+                event_date,
+            )
+        else:
+            month_distance = abs(event_date.month - target_month)
+
+            sort_key = (
+                month_distance,
+                -candidate["score"],
+                event_date,
+            )
 
         valid_candidates.append({
             "candidate": candidate,
-            "month_distance": month_distance,
+            "sort_key": sort_key,
         })
 
     if not valid_candidates:
         return None
 
     valid_candidates.sort(
-        key=lambda x: (
-            x["month_distance"],
-            x["candidate"]["event_date"],
-        )
+        key=lambda item: item["sort_key"]
     )
 
     return valid_candidates[0]["candidate"]
@@ -318,7 +453,16 @@ def optimize_suggested_events(start_date, end_date, dry_run=True, scheduler_run=
     candidates = build_candidate_pool(start_date, end_date)
 
     selected = []
-    used_dates = set()
+
+    # Dates occupied by existing, non-cancelled calendar events.
+    used_dates = set(
+        ScheduledEvent.objects.filter(
+            event_date__gte=start_date,
+            event_date__lte=end_date,
+        ).exclude(
+            status="CANCELLED"
+        ).values_list("event_date", flat=True)
+    )
 
     existing_suggested_dates = set(
         SuggestedEvent.objects.filter(
@@ -372,6 +516,25 @@ def optimize_suggested_events(start_date, end_date, dry_run=True, scheduler_run=
             ).values_list("suggested_date__month", flat=True)
         )
 
+        # Collect existing scheduled dates for this partner.
+        # Include dates outside the scheduling window so events
+        # near the beginning or end are also protected.
+        partner_dates = set(
+            ScheduledEvent.objects.filter(
+                partner=partner,
+            ).exclude(
+                status="CANCELLED"
+            ).values_list("event_date", flat=True)
+        )
+
+        # Include existing active suggestions for this partner.
+        partner_dates.update(
+            SuggestedEvent.objects.filter(
+                partner=partner,
+                status__in=["SUGGESTED", "APPROVED"],
+            ).values_list("suggested_date", flat=True)
+        )
+
         for target_month in target_months:
             chosen = choose_best_candidate_for_partner_slot(
                 partner=partner,
@@ -380,6 +543,7 @@ def optimize_suggested_events(start_date, end_date, dry_run=True, scheduler_run=
                 used_dates=used_dates,
                 existing_suggested_dates=existing_suggested_dates,
                 used_months=used_months,
+                partner_dates=partner_dates,
             )
 
             if not chosen:
@@ -387,6 +551,7 @@ def optimize_suggested_events(start_date, end_date, dry_run=True, scheduler_run=
 
             selected.append(chosen)
             used_dates.add(chosen["event_date"])
+            partner_dates.add(chosen["event_date"])
             used_months.add(chosen["event_date"].month)
 
     if not dry_run:

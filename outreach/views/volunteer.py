@@ -206,6 +206,19 @@ def volunteer_for_event(request, event_id):
     if request.method != "POST":
         return redirect("volunteer_event_detail", event_id=event_id)
 
+    event = get_object_or_404(ScheduledEvent, id=event_id)
+
+    if not event.allow_volunteer_registration:
+        messages.info(
+            request,
+            "This is an information-only event. "
+            "Volunteer registration is not available.",
+        )
+        return redirect(
+            "volunteer_event_detail",
+            event_id=event.id,
+        )
+
     volunteer = getattr(request.user, "volunteer_profile", None)
 
     if volunteer is None:
@@ -261,6 +274,17 @@ def volunteer_for_event(request, event_id):
             .select_for_update()
             .get(id=event_id)
         )
+
+        if not event.allow_volunteer_registration:
+            messages.info(
+                request,
+                "This is an information-only event. "
+                "Volunteer registration is not available.",
+            )
+            return redirect(
+                "volunteer_event_detail",
+                event_id=event.id,
+            )
 
         current_volunteer_count = EventVolunteer.objects.filter(
             event=event

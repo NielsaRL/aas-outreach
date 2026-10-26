@@ -200,7 +200,11 @@
                                         {% endif %}
 
 
-                                        {% if event.volunteer_signup_full %}
+                                        {% if not event.allow_volunteer_registration %}
+                                            <span class="calendar-event-full">
+                                                INFORMATION ONLY
+                                            </span>
+                                        {% elif event.volunteer_signup_full %}
                                             <span class="calendar-event-full">
                                                 Full
                                             </span>

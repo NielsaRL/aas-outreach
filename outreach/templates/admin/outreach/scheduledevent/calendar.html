@@ -167,6 +167,22 @@
         text-decoration: none;
     }
 
+    .calendar-event-proposed {
+    border: 1px dashed #8e44ad;
+    border-left: 5px solid #8e44ad;
+    background: #f3e8ff;
+    color: #43205c;
+    }
+
+    .calendar-proposed-label {
+        display: inline-block;
+        margin-bottom: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        color: #6b21a8;
+    }
+
     .calendar-event-planned {
         border-left-color: #1976d2;
     }
@@ -334,6 +350,40 @@
 
                         </div>
 
+
+                        {% if day.suggestions %}
+                            <div class="calendar-events" style="margin-bottom: 6px;">
+
+                                {% for suggestion in day.suggestions %}
+                                    <a
+                                        href="{{ suggestion.admin_url }}"
+                                        class="calendar-event calendar-event-proposed"
+                                    >
+                                        <span class="calendar-proposed-label">
+                                            PROPOSED
+                                        </span>
+
+                                        <span class="calendar-event-name">
+                                            {{ suggestion.partner.partner_name }}
+                                        </span>
+
+                                        {% if suggestion.start_time %}
+                                            <span class="calendar-event-meta">
+                                                {{ suggestion.start_time|time:"g:i A" }}
+                                                {% if suggestion.end_time %}
+                                                    – {{ suggestion.end_time|time:"g:i A" }}
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
+
+                                        <span class="calendar-event-meta">
+                                            {{ suggestion.partner }}
+                                        </span>
+                                    </a>
+                                {% endfor %}
+
+                            </div>
+                        {% endif %}
 
                         {% if day.events %}
 

@@ -233,13 +233,15 @@
                                         <br>
                                     {% endif %}
 
-                                    <strong>Volunteers:</strong>
-                                    {{ event.volunteer_count }}
+                                    {% if event.allow_volunteer_registration %}
+                                        <strong>Volunteers:</strong>
+                                        {{ event.volunteer_count }}
 
-                                    {% if event.volunteer_capacity %}
-                                        of {{ event.volunteer_capacity }}
-                                    {% else %}
-                                        <span class="text-muted">(Unlimited)</span>
+                                        {% if event.volunteer_capacity %}
+                                            of {{ event.volunteer_capacity }}
+                                        {% else %}
+                                            <span class="text-muted">(Unlimited)</span>
+                                        {% endif %}
                                     {% endif %}
 
                                 </p>
@@ -251,7 +253,14 @@
                                         View Event Details
                                     </a>
 
-                                    {% if event.volunteer_signup_full %}
+                                    {% if not event.allow_volunteer_registration %}
+                                        <button type="button"
+                                                class="btn btn-secondary btn-sm"
+                                                disabled>
+                                            Volunteer for this Event
+                                        </button>
+
+                                    {% elif event.volunteer_signup_full %}
 
                                         <button type="button"
                                                 class="btn btn-secondary btn-sm"
@@ -262,7 +271,7 @@
                                     {% else %}
 
                                         <a href="{% url 'volunteer_event_detail' event.id %}"
-                                           class="btn btn-aas-gold btn-sm">
+                                        class="btn btn-aas-gold btn-sm">
                                             Volunteer for this Event
                                         </a>
 

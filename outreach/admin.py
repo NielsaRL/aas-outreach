@@ -9,13 +9,15 @@ from .services.advertising import generate_advertising_campaign
 from django.utils.html import format_html
 from django.urls import path, reverse
 from django.shortcuts import render, redirect
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
 import csv
 
 from django.utils.dateparse import parse_date
 from datetime import date, timedelta
 import calendar
-from .models import EventChecklist, Partner, PartnerLocationResource, Volunteer, ScheduledEvent, BlackoutDate, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem, AdvertisingOutlet, AdvertisingCampaign, EventAdvertisement, AdvertisingPlaybook
+from .models import EventChecklist, Partner, PartnerLocationResource, Volunteer, ScheduledEvent, BlackoutDate, RecurringBlackoutRule, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem, AdvertisingOutlet, AdvertisingCampaign, EventAdvertisement, AdvertisingPlaybook
 
 class EventVolunteerInlineForm(forms.ModelForm):
     class Meta:
@@ -206,6 +208,7 @@ class PartnerAdmin(admin.ModelAdmin):
         "auto_bortle_class",
         "partner_type",
         "scheduling_type",
+        "scheduling_strategy",
         "priority",
         "events_per_year",
         "allowed_weekdays",
@@ -231,6 +234,7 @@ class PartnerAdmin(admin.ModelAdmin):
         }),
         ("Scheduling Rules", {
             "fields": (
+                "scheduling_strategy",
                 "events_per_year",
                 "allowed_weekdays",
                 "allowed_weekday_occurrences",
@@ -275,6 +279,7 @@ class PartnerAdmin(admin.ModelAdmin):
     list_filter = (
         "partner_type",
         "scheduling_type",
+        "scheduling_strategy",
         "priority",
         "allowed_weekdays",
         "allowed_weekday_occurrences",
@@ -881,6 +886,30 @@ class ScheduledEventAdmin(admin.ModelAdmin):
             )
         )
 
+        suggestions = (
+            SuggestedEvent.objects
+            .filter(
+                suggested_date__gte=first_day,
+                suggested_date__lte=last_day,
+                status="SUGGESTED",
+            )
+            .select_related("partner")
+            .order_by("suggested_date", "start_time")
+        )
+
+        suggestions_by_date = {}
+
+        for suggestion in suggestions:
+            suggestion.admin_url = reverse(
+                "admin:outreach_suggestedevent_change",
+                args=[suggestion.pk],
+            )
+
+            suggestions_by_date.setdefault(
+                suggestion.suggested_date,
+                [],
+            ).append(suggestion)
+
         events_by_date = {}
 
         for event in events:
@@ -935,6 +964,7 @@ class ScheduledEventAdmin(admin.ModelAdmin):
                         "in_current_month": day_date.month == month,
                         "is_today": day_date == today,
                         "events": events_by_date.get(day_date, []),
+                        "suggestions": suggestions_by_date.get(day_date, []),
                         "moon_phase": phase,
                         "moon_illumination": illumination,
                         "moon_color": moon_color,
@@ -1077,49 +1107,92 @@ class SuggestedEventAdmin(admin.ModelAdmin):
     @admin.action(description="Approve selected suggestions and create scheduled events")
     def approve_suggestions(self, request, queryset):
         created_count = 0
-        updated_count = 0
         approved_count = 0
+        skipped_count = 0
+        errors = []
 
         for suggestion in queryset:
-            existing_event = ScheduledEvent.objects.filter(
-                partner=suggestion.partner,
-                event_date=suggestion.suggested_date,
-            ).first()
+            try:
+                with transaction.atomic():
 
-            if existing_event:
-                existing_event.event_title_type = "STAR_PARTY"
-                existing_event.start_time = suggestion.start_time
-                existing_event.end_time = suggestion.end_time
-                existing_event.status = "PLANNED"
-                existing_event.save()
+                    # Prevent duplicate approvals.
+                    if suggestion.status == "APPROVED":
+                        raise ValidationError(
+                            "This suggestion has already been approved."
+                        )
 
-                updated_count += 1
+                    # Never overwrite an existing event.
+                    existing_event = ScheduledEvent.objects.filter(
+                        partner=suggestion.partner,
+                        event_date=suggestion.suggested_date,
+                    ).exists()
 
-            else:
-                ScheduledEvent.objects.create(
-                    partner=suggestion.partner,
-                    event_date=suggestion.suggested_date,
-                    event_title_type="STAR_PARTY",
-                    start_time=suggestion.start_time,
-                    end_time=suggestion.end_time,
-                    status="PLANNED",
+                    if existing_event:
+                        raise ValidationError(
+                            "An event already exists for this partner and date."
+                        )
+
+                    # Create the event in memory first.
+                    event = ScheduledEvent(
+                        partner=suggestion.partner,
+                        event_date=suggestion.suggested_date,
+                        event_title_type="STAR_PARTY",
+                        start_time=suggestion.start_time,
+                        end_time=suggestion.end_time,
+                        status="PLANNED",
+                    )
+
+                    # Enforce scheduling conflicts, blackouts,
+                    # and all other model validation.
+                    event.full_clean()
+
+                    # Save only after validation succeeds.
+                    event.save()
+                    created_count += 1
+
+                    suggestion.status = "APPROVED"
+                    suggestion.save()
+                    approved_count += 1
+
+            except ValidationError as exc:
+                skipped_count += 1
+                errors.append(
+                    f"Suggestion #{suggestion.pk} "
+                    f"({suggestion.suggested_date}): "
+                    f"{'; '.join(exc.messages)}"
                 )
 
-                created_count += 1
+            except Exception as exc:
+                skipped_count += 1
+                errors.append(
+                    f"Suggestion #{suggestion.pk} "
+                    f"({suggestion.suggested_date}): "
+                    f"{exc}"
+                )
 
-            suggestion.status = "APPROVED"
-            suggestion.save()
-            approved_count += 1
+        if approved_count:
+            self.message_user(
+                request,
+                (
+                    f"{approved_count} suggestion(s) approved. "
+                    f"{created_count} scheduled event(s) created."
+                ),
+                messages.SUCCESS,
+            )
 
-        self.message_user(
-            request,
-            (
-                f"{approved_count} suggestion(s) approved. "
-                f"{created_count} scheduled event(s) created. "
-                f"{updated_count} existing event(s) updated."
-            ),
-            messages.SUCCESS,
-        )
+        if skipped_count:
+            self.message_user(
+                request,
+                f"{skipped_count} suggestion(s) skipped.",
+                messages.WARNING,
+            )
+
+            for error in errors:
+                self.message_user(
+                    request,
+                    error,
+                    messages.WARNING,
+                )
 
     @admin.action(description="Reject selected suggestions")
     def reject_suggestions(self, request, queryset):
@@ -2222,3 +2295,23 @@ class AdvertisingPlaybookAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+@admin.register(RecurringBlackoutRule)
+class RecurringBlackoutRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "reason",
+        "occurrence",
+        "weekday",
+        "month",
+        "active",
+    )
+
+    list_filter = (
+        "active",
+        "month",
+        "weekday",
+    )
+
+    search_fields = ("reason",)
+
+    list_editable = ("active",)
