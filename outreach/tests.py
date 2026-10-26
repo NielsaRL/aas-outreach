@@ -1,5 +1,6 @@
 from django.test import TestCase
-
+from django.test import TestCase
+from outreach.models import Partner, SchedulerRun, SuggestedEvent
 # Create your tests here.
 from datetime import date, timedelta
 from types import SimpleNamespace
@@ -132,3 +133,75 @@ class SchedulingStrategyTests(SimpleTestCase):
             chosen["event_date"],
             date(2027, 6, 26),
         )
+
+class SchedulerRunDeletionTests(TestCase):
+
+    def test_deleting_run_preserves_approved_and_manual_suggestions(self):
+        # Use an existing partner model instance without needing
+        # to supply every required Partner field.
+        partner = Partner.objects.create(
+            partner_name="Scheduler Test Partner",
+        )
+
+        run = SchedulerRun.objects.create(
+            start_date=date(2027, 1, 1),
+            end_date=date(2027, 12, 31),
+            notes="Automated cleanup test",
+            run_scheduler=False,
+        )
+
+        pending = SuggestedEvent.objects.create(
+            partner=partner,
+            scheduler_run=run,
+            suggested_date=date(2027, 1, 9),
+            status="SUGGESTED",
+            manual_entry=False,
+        )
+
+        rejected = SuggestedEvent.objects.create(
+            partner=partner,
+            scheduler_run=run,
+            suggested_date=date(2027, 2, 6),
+            status="REJECTED",
+            manual_entry=False,
+        )
+
+        approved = SuggestedEvent.objects.create(
+            partner=partner,
+            scheduler_run=run,
+            suggested_date=date(2027, 3, 6),
+            status="APPROVED",
+            manual_entry=False,
+        )
+
+        manual = SuggestedEvent.objects.create(
+            partner=partner,
+            scheduler_run=run,
+            suggested_date=date(2027, 4, 3),
+            status="SUGGESTED",
+            manual_entry=True,
+        )
+
+        run.delete()
+
+        self.assertFalse(
+            SuggestedEvent.objects.filter(pk=pending.pk).exists()
+        )
+
+        self.assertFalse(
+            SuggestedEvent.objects.filter(pk=rejected.pk).exists()
+        )
+
+        self.assertTrue(
+            SuggestedEvent.objects.filter(pk=approved.pk).exists()
+        )
+
+        self.assertTrue(
+            SuggestedEvent.objects.filter(pk=manual.pk).exists()
+        )
+
+        approved.refresh_from_db()
+        manual.refresh_from_db()
+
+        self.assertIsNone(approved.scheduler_run)
+        self.assertIsNone(manual.scheduler_run)
