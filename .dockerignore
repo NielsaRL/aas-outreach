@@ -1,0 +1,31 @@
+# Git and development files
+.git/
+.gitignore
+.vscode/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Secrets and environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Databases and uploaded files
+*.sqlite3
+data/
+media/
+
+# Deployment files and backups
+deployment/
+*.bak
+*.backup
+*.backup.*
+*.test
+
+# Operating system files
+.DS_Store
+Thumbs.db
