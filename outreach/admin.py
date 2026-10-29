@@ -15,7 +15,7 @@ from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
 import csv
 
 from django.utils.dateparse import parse_date
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import calendar
 from .models import EventChecklist, Partner, PartnerLocationResource, Volunteer, ScheduledEvent, BlackoutDate, RecurringBlackoutRule, EventVolunteer, EventLog, AstronomicalTarget, EventTarget, SuggestedEvent, SchedulerRun, EventChecklistItem, AdvertisingOutlet, AdvertisingCampaign, EventAdvertisement, AdvertisingPlaybook
 

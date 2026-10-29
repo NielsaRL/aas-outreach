@@ -695,17 +695,6 @@ class BlackoutDate(models.Model):
         help_text="Uncheck to allow this date to be scheduled without deleting the blackout record.",
     )
 
-    def clean(self):
-        super().clean()
-
-        if self.weekday == 7 and self.occurrence != -1:
-            raise ValidationError({
-                "occurrence": (
-                    "When selecting Last weekday (Monday–Friday), "
-                    "the occurrence must be Last."
-                )
-            })
-
     class Meta:
         ordering = ("blackout_date",)
         verbose_name = "Blackout Date"
