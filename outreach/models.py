@@ -1,6 +1,6 @@
 from django.db import models
 from datetime import datetime
-from .services.astronomy import calculate_twilight_times, calculate_moon_info
+from .services.astronomy import calculate_twilight_times, calculate_moon_info, calculate_moonrise
 from django.core.exceptions import ValidationError
 from multiselectfield import MultiSelectField
 from django.contrib.auth.models import User
@@ -9,12 +9,18 @@ from django.db.models import Sum
 
 # Create your models here.
 class Partner(models.Model):
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["partner_type", "scheduling_type", "priority"],
-                name="unique_partner_type_scheduling_type_priority",
-            )
+                fields=[
+                    "partner_type",
+                    "scheduling_type",
+                    "priority",
+                ],
+                condition=models.Q(partner_type="YEARLY"),
+                name="unique_yearly_partner_scheduling_priority",
+            ),
         ]
 
     PARTNER_TYPE_CHOICES = [
@@ -286,18 +292,21 @@ class Volunteer(models.Model):
 class ScheduledEvent(models.Model):
 
     STATUS_CHOICES = [
+        ("REQUESTED", "Requested"),
         ("PLANNED", "Planned"),
         ("CONFIRMED", "Confirmed"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
+        ("RESCHEDULED", "Rescheduled"),
     ]
 
     EVENT_TITLE_CHOICES = [
         ("STAR_PARTY", "Star Party"),
         ("SOLAR_OUTREACH", "Solar Outreach"),
-        ("LIBRARY_PROGRAM", "Library Program"),
-        ("SIDEWALK_ASTRONOMY", "Sidewalk Astronomy"),
+        ("STEAM_EVENT", "STEAM Event"),
         ("CUSTOM", "Custom"),
+        ("LIBRARY_PROGRAM", "Library Program (Retired)"),
+        ("SIDEWALK_ASTRONOMY", "Sidewalk Astronomy (Retired)"),
     ]
 
     partner = models.ForeignKey(
@@ -355,6 +364,16 @@ class ScheduledEvent(models.Model):
         ),
     )
 
+    show_on_public_website = models.BooleanField(
+        "Show on public outreach website",
+        default=False,
+        help_text=(
+            "Display this event in the public outreach gallery "
+            "when it is confirmed and current or upcoming. "
+            "Uncheck to keep the event hidden from the public website."
+        ),
+    )
+
     host = models.ForeignKey(
         Volunteer,
         on_delete=models.SET_NULL,
@@ -387,6 +406,15 @@ class ScheduledEvent(models.Model):
         null=True,
         blank=True,
         help_text="Moon illumination percentage."
+    )
+
+    moonrise_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Automatically calculated local moonrise time "
+            "for the event date. Blank if no moonrise occurs."
+        ),
     )
 
     suggested_talk_start_time = models.TimeField(
@@ -525,7 +553,11 @@ class ScheduledEvent(models.Model):
             f"{formatted_date}"
         )
 
-        if self.event_date and self.partner:
+        if (
+            self.event_title_type != "STEAM_EVENT"
+            and self.event_date
+            and self.partner_id
+        ):
             twilight_data = calculate_twilight_times(
                 event_date=self.event_date,
                 latitude=self.partner.latitude,
@@ -545,6 +577,24 @@ class ScheduledEvent(models.Model):
 
             self.moon_phase = moon_data["moon_phase"]
             self.moon_illumination = moon_data["moon_illumination"]
+            if (
+                self.partner.latitude is not None
+                and self.partner.longitude is not None
+            ):
+                moonrise = calculate_moonrise(
+                    event_date=self.event_date,
+                    latitude=self.partner.latitude,
+                    longitude=self.partner.longitude,
+                    timezone_name=self.partner.timezone,
+                )
+
+                self.moonrise_time = (
+                    moonrise.time().replace(tzinfo=None)
+                    if moonrise is not None
+                    else None
+                )
+            else:
+                self.moonrise_time = None
 
         super().save(*args, **kwargs)
 

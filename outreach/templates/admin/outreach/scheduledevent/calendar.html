@@ -379,6 +379,10 @@
                                         <span class="calendar-event-meta">
                                             {{ suggestion.partner }}
                                         </span>
+
+                                        <span class="calendar-event-meta">
+                                            🌙 Moonrise: {{ suggestion.calendar_moonrise|default:"—" }}
+                                        </span>
                                     </a>
                                 {% endfor %}
 
@@ -415,6 +419,16 @@
                                         {% if event.partner %}
                                             <span class="calendar-event-meta">
                                                 {{ event.partner }}
+                                            </span>
+                                        {% endif %}
+
+                                        {% if event.moonrise_time %}
+                                            <span class="calendar-event-meta">
+                                                🌙 Moonrise: {{ event.moonrise_time|time:"g:i A" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="calendar-event-meta">
+                                                🌙 Moonrise: —
                                             </span>
                                         {% endif %}
 

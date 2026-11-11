@@ -1,0 +1,239 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ event.event_name }} - Event Summary</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            color: #222;
+            font-size: 12px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            font-size: 24px;
+        }
+
+        h2 {
+            margin-top: 25px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #333;
+            font-size: 16px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 24px;
+        }
+
+        .details p {
+            margin: 4px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .print-controls {
+            margin-bottom: 25px;
+        }
+
+        button {
+            padding: 10px 18px;
+            cursor: pointer;
+        }
+
+        @media print {
+            .print-controls {
+                display: none;
+            }
+
+            body {
+                margin: 12mm;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            tr {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="print-controls">
+        <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <h1>{{ event.event_name }}</h1>
+    <div class="subtitle">Scheduled Outreach Event Summary</div>
+
+    <h2>Event Information</h2>
+
+    <div class="details">
+        <p><strong>Date:</strong> {{ event.event_date|date:"F j, Y" }}</p>
+        <p><strong>Status:</strong> {{ event.get_status_display }}</p>
+
+        <p>
+            <strong>Start:</strong>
+            {{ event.start_time|time:"g:i A"|default:"TBD" }}
+        </p>
+
+        <p>
+            <strong>End:</strong>
+            {{ event.end_time|time:"g:i A"|default:"TBD" }}
+        </p>
+
+        <p><strong>Partner:</strong> {{ event.partner }}</p>
+
+        <p>
+            <strong>Location:</strong>
+            {{ event.partner.location_name|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Address:</strong>
+            {{ event.partner.address|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Host:</strong>
+            {% if event.host %}
+                {{ event.host.volunteer_name }}
+            {% elif event.manual_host_name %}
+                {{ event.manual_host_name }}
+            {% else %}
+                Not assigned
+            {% endif %}
+        </p>
+    </div>
+
+    <h2>Astronomy Information</h2>
+
+    <div class="details">
+        <p>
+            <strong>Sunset:</strong>
+            {{ event.sunset_time|time:"g:i A"|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Civil Dusk:</strong>
+            {{ event.civil_dusk_time|time:"g:i A"|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Nautical Dusk:</strong>
+            {{ event.nautical_dusk_time|time:"g:i A"|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Moonrise:</strong>
+            {{ event.moonrise_time|time:"g:i A"|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Moon Phase:</strong>
+            {{ event.moon_phase|default:"—" }}
+        </p>
+
+        <p>
+            <strong>Moon Illumination:</strong>
+            {% if event.moon_illumination != None %}
+                {{ event.moon_illumination|floatformat:0 }}%
+            {% else %}
+                —
+            {% endif %}
+        </p>
+    </div>
+
+    <h2>Location & Setup Information</h2>
+
+    {% if event.partner.meeting_location %}
+        <p><strong>Meeting Location:</strong>
+            {{ event.partner.meeting_location }}</p>
+    {% endif %}
+
+    {% if event.partner.volunteer_arrival_instructions %}
+        <p><strong>Arrival Instructions:</strong></p>
+        {{ event.partner.volunteer_arrival_instructions|linebreaks }}
+    {% endif %}
+
+    {% if event.partner.parking_instructions %}
+        <p><strong>Parking:</strong></p>
+        {{ event.partner.parking_instructions|linebreaks }}
+    {% endif %}
+
+    {% if event.partner.setup_location_notes %}
+        <p><strong>Setup Location:</strong></p>
+        {{ event.partner.setup_location_notes|linebreaks }}
+    {% endif %}
+
+    <h2>Volunteer Roster ({{ volunteer_count }})</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Volunteer</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Telescopes</th>
+                <th>PFSP Approved</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for assignment in volunteers %}
+                <tr>
+                    <td>{{ assignment.volunteer.volunteer_name }}</td>
+                    <td>{{ assignment.volunteer.email|default:"—" }}</td>
+                    <td>{{ assignment.volunteer.phone|default:"—" }}</td>
+                    <td>{{ assignment.get_role_display }}</td>
+                    <td>{{ assignment.telescope_count }}</td>
+                    <td>
+                        {% if assignment.volunteer.cleared_by_pfsp %}
+                            Yes
+                        {% else %}
+                            No
+                        {% endif %}
+                    </td>
+                    <td>{{ assignment.notes|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7">No volunteers registered.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

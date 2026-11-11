@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
 from astral.sun import sun, dusk
-from skyfield.api import load
+from skyfield.api import load, wgs84
 from skyfield import almanac
 
 def round_to_nearest_half_hour(dt):
@@ -104,3 +104,64 @@ def calculate_moon_info(event_date, timezone_name):
         "moon_phase": phase_name,
         "moon_illumination": round(illumination, 1),
     }
+
+
+def calculate_moonrise(event_date, latitude, longitude, timezone_name):
+    """
+    Calculate the first moonrise occurring on the specified local date.
+
+    Args:
+        event_date: Python date object.
+        latitude: Observer latitude in decimal degrees.
+        longitude: Observer longitude in decimal degrees.
+        timezone_name: IANA timezone, e.g. "America/Chicago".
+
+    Returns:
+        A timezone-aware datetime representing local moonrise,
+        or None if no moonrise occurs on that date.
+    """
+    if latitude is None or longitude is None:
+        return None
+
+    tz = ZoneInfo(timezone_name)
+    ts = load.timescale()
+    eph = load("de421.bsp")
+
+    # Define the start and end of the local calendar day.
+    local_start = datetime.combine(
+        event_date,
+        datetime.min.time(),
+        tzinfo=tz,
+    )
+
+    local_end = datetime.combine(
+        event_date + timedelta(days=1),
+        datetime.min.time(),
+        tzinfo=tz,
+    )
+
+    # Construct the observer's geographic location.
+    observer = wgs84.latlon(
+        latitude_degrees=latitude,
+        longitude_degrees=longitude,
+    )
+
+    # Skyfield expects a geographic observer, Moon target,
+    # start time, and end time.
+    times, valid = almanac.find_risings(
+        eph["earth"] + observer,
+        eph["moon"],
+        ts.from_datetime(local_start),
+        ts.from_datetime(local_end),
+    )
+
+    # Find the first valid moonrise on the requested local date.
+    for time, is_valid in zip(times, valid):
+        if is_valid:
+            local_rise = time.utc_datetime().astimezone(tz)
+
+            if local_rise.date() == event_date:
+                return local_rise
+
+    # No moonrise occurred during this local calendar day.
+    return None

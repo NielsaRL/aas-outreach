@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AAS Suggested Outreach Events</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #222;
+            margin: 30px;
+            font-size: 13px;
+        }
+
+        h1 { margin-bottom: 5px; }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #234b76;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #edf1f5;
+            font-weight: bold;
+        }
+
+        tr { break-inside: avoid; }
+
+        .empty {
+            padding: 25px;
+            text-align: center;
+            color: #777;
+        }
+
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0.5in;
+            }
+
+            body { margin: 0; }
+
+            .toolbar { display: none; }
+
+            thead { display: table-header-group; }
+
+            tr { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <span>Austin Astronomical Society</span>
+        <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <h1>Suggested Outreach Events</h1>
+
+    <div class="subtitle">
+        Generated: {{ printed_at|date:"F j, Y g:i A" }}
+        &nbsp; | &nbsp;
+        Total suggestions: {{ total_count }}
+    </div>
+
+    {% if suggestions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Partner / Venue</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Sunset</th>
+                <th>Moonrise</th>
+                <th>Moon Illumination</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for suggestion in suggestions %}
+            <tr>
+                <td>{{ suggestion.suggested_date|date:"M j, Y" }}</td>
+
+                <td>
+                    <strong>{{ suggestion.partner.partner_name }}</strong>
+                    {% if suggestion.partner.location_name %}
+                        <div>{{ suggestion.partner.location_name }}</div>
+                    {% endif %}
+                </td>
+
+                <td>{{ suggestion.start_time|time:"g:i A"|default:"—" }}</td>
+                <td>{{ suggestion.end_time|time:"g:i A"|default:"—" }}</td>
+                <td>{{ suggestion.sunset_time|time:"g:i A"|default:"—" }}</td>
+                <td>{{ suggestion.print_moonrise }}</td>
+                <td>
+                    {% if suggestion.print_moon_illumination != None %}
+                        {{ suggestion.print_moon_illumination|floatformat:0 }}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ suggestion.get_status_display }}</td>
+
+                <td>
+                    {% if suggestion.manual_entry %}
+                        Manual
+                    {% else %}
+                        Scheduler
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if suggestion.status == "REJECTED" %}
+                        {{ suggestion.rejection_reason|default:"—" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">No suggested events match the selected filters.</div>
+    {% endif %}
+
+</body>
+</html>

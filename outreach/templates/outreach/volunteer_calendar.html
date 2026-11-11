@@ -199,6 +199,15 @@
                                             </span>
                                         {% endif %}
 
+                                        {% if event.moonrise_time %}
+                                            <span class="calendar-event-time">
+                                                🌙 Moonrise: {{ event.moonrise_time|time:"g:i A" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="calendar-event-time">
+                                                🌙 Moonrise: —
+                                            </span>
+                                        {% endif %}
 
                                         {% if not event.allow_volunteer_registration %}
                                             <span class="calendar-event-full">

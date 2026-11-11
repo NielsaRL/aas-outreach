@@ -25,6 +25,7 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
 
     path("", views.public_home, name="public_home"),
+    path("public/events/", views.public_event_gallery, name="public_event_gallery",),
     path("register/", views.register, name="register"),
     path("portal/", views.volunteer_portal, name="volunteer_portal"),
     path("portal/calendar/", views.volunteer_calendar, name="volunteer_calendar"),

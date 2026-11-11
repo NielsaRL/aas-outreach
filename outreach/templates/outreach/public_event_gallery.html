@@ -1,0 +1,308 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AAS Outreach Events</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 12px;
+            background: #f5f7fb;
+            color: #17233d;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .gallery {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .gallery h1 {
+            font-size: 1.45rem;
+            margin: 4px 0 6px;
+        }
+
+        .intro {
+            color: #586579;
+            font-size: .9rem;
+            margin: 0 0 18px;
+        }
+
+        .event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .event-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px;
+            background: white;
+            border: 1px solid #dce3ed;
+            border-radius: 10px;
+        }
+
+        .date-block {
+            flex: 0 0 58px;
+            padding: 8px 4px;
+            text-align: center;
+            background: #eef3fb;
+            border-radius: 8px;
+        }
+
+        .date-month {
+            font-size: .68rem;
+            font-weight: bold;
+            color: #275aa6;
+        }
+
+        .date-day {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .date-weekday {
+            font-size: .68rem;
+            color: #586579;
+        }
+
+        .event-info {
+            flex: 2 1 240px;
+            min-width: 0;
+        }
+
+        .event-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0 0 6px;
+        }
+
+        .event-subtitle,
+        .event-address {
+            font-size: .82rem;
+            color: #586579;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .event-address a {
+            color: #275aa6;
+            text-decoration: none;
+        }
+
+        .event-address a:hover {
+            text-decoration: underline;
+        }
+
+        .event-schedule {
+            flex: 1 1 150px;
+            font-size: .84rem;
+            min-width: 120px;
+        }
+
+        .event-time {
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        .event-host {
+            color: #586579;
+            font-size: .8rem;
+        }
+
+        .event-moon {
+            flex: 0 0 70px;
+            font-size: .84rem;
+        }
+
+        .small-label {
+            color: #586579;
+            font-size: .72rem;
+            margin-bottom: 4px;
+        }
+
+        .event-status {
+            flex: 0 0 95px;
+            text-align: right;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 7px;
+            font-size: .75rem;
+            font-weight: 600;
+            background: #e8f0fc;
+            color: #234f89;
+        }
+
+        .status.confirmed {
+            background: #d9f3e3;
+            color: #176b3b;
+        }
+
+        .status.cancelled {
+            background: #fde8e8;
+            color: #a51e29;
+        }
+
+        .event-card.cancelled {
+            border-left: 4px solid #b42332;
+        }
+
+        .empty {
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            text-align: center;
+            color: #586579;
+        }
+
+        @media (max-width: 700px) {
+            .event-card {
+                flex-wrap: wrap;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .event-info {
+                flex: 1 1 calc(100% - 75px);
+            }
+
+            .event-schedule {
+                margin-left: 72px;
+                flex: 1 1 130px;
+            }
+
+            .event-moon {
+                flex: 0 0 65px;
+            }
+
+            .event-status {
+                flex: 0 0 auto;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<main class="gallery">
+
+    <h1>Upcoming Outreach Events</h1>
+
+    <p class="intro">
+        Explore upcoming astronomy events with the
+        Austin Astronomical Society.
+    </p>
+
+    {% if events %}
+        <div class="event-list">
+
+            {% for event in events %}
+                <article class="event-card {% if event.status == 'CANCELLED' %}cancelled{% endif %}">
+
+                    <div class="date-block">
+                        <div class="date-month">
+                            {{ event.event_date|date:"M"|upper }}
+                        </div>
+                        <div class="date-day">
+                            {{ event.event_date|date:"j" }}
+                        </div>
+                        <div class="date-weekday">
+                            {{ event.event_date|date:"D"|upper }}
+                        </div>
+                    </div>
+
+                    <div class="event-info">
+
+                        <h2 class="event-title">
+                            {{ event.event_name }}
+                        </h2>
+
+                        <div class="event-subtitle">
+                            {{ event.partner.location_name|default:event.partner.partner_name }}
+                            &middot;
+                            {{ event.get_event_title_type_display }}
+                        </div>
+
+                        {% if event.partner.address %}
+                            <div class="event-address">
+                                <a href="https://www.google.com/maps/search/?api=1&amp;query={{ event.partner.address|urlencode }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer">
+                                    &#128205; {{ event.partner.address }}
+                                </a>
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+                    <div class="event-schedule">
+                        <div class="event-time">
+                            {% if event.start_time %}
+                                {{ event.start_time|time:"g:i A" }}
+                                {% if event.end_time %}
+                                    &ndash; {{ event.end_time|time:"g:i A" }}
+                                {% endif %}
+                            {% else %}
+                                Time to be announced
+                            {% endif %}
+                        </div>
+
+                        <div class="event-host">
+                            Host: {{ event.host_display }}
+                        </div>
+                    </div>
+
+                    <div class="event-moon">
+                        <div class="small-label">Moon</div>
+
+                        <div class="moon-illumination">
+                            {% if event.moon_illumination != None %}
+                                {{ event.moon_illumination|floatformat:0 }}% illuminated
+                            {% else %}
+                                Illumination unavailable
+                            {% endif %}
+                        </div>
+
+                        <div class="moonrise" style="white-space: nowrap;">
+                            {% if event.moonrise_time %}
+                                Rise: {{ event.moonrise_time|time:"g:i A" }}
+                            {% else %}
+                                Rise: —
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="event-status">
+                        <span class="status
+                            {% if event.status == 'CONFIRMED' %}confirmed{% endif %}
+                            {% if event.status == 'CANCELLED' %}cancelled{% endif %}">
+                            {{ event.get_status_display }}
+                        </span>
+                    </div>
+
+                </article>
+            {% endfor %}
+
+        </div>
+    {% else %}
+        <div class="empty">
+            No upcoming public outreach events are currently listed.
+            Please check back soon!
+        </div>
+    {% endif %}
+
+</main>
+</body>
+</html>

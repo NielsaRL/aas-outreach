@@ -8,6 +8,7 @@ from .volunteer import (
     volunteer_event_detail,
     edit_volunteer_profile,
 )
+from .public_gallery import public_event_gallery
 
 __all__ = [
     "public_home",
@@ -17,4 +18,5 @@ __all__ = [
     "cancel_volunteer_for_event",
     "volunteer_event_detail",
     "edit_volunteer_profile",
+    "public_event_gallery",
 ]

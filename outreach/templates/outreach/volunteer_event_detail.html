@@ -38,6 +38,42 @@
             </p>
         {% endif %}
 
+        <div class="mt-3 mb-3">
+            <h3 class="h6 mb-3">Astronomy Information</h3>
+
+            <p>
+                <strong>Sunset:</strong>
+                {% if event.sunset_time %}
+                    {{ event.sunset_time|time:"g:i A" }}
+                {% else %}
+                    Unavailable
+                {% endif %}
+            </p>
+
+            <p>
+                <strong>Moonrise:</strong>
+                {% if event.moonrise_time %}
+                    {{ event.moonrise_time|time:"g:i A" }}
+                {% else %}
+                    Not available
+                {% endif %}
+            </p>
+
+            <p>
+                <strong>Moon Phase:</strong>
+                {{ event.moon_phase|default:"Unavailable" }}
+            </p>
+
+            <p>
+                <strong>Moon Illumination:</strong>
+                {% if event.moon_illumination != None %}
+                    {{ event.moon_illumination|floatformat:0 }}%
+                {% else %}
+                    Unavailable
+                {% endif %}
+            </p>
+        </div>
+
         {% if event.allow_volunteer_registration %}
 
             <p>

@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 from django import forms
-from .services.astronomy import calculate_moon_info
+from .services.astronomy import calculate_moon_info, calculate_moonrise
 from .services.targets import suggest_targets_for_event
 from .services.weather import update_weather_for_event
 from .services.star_chart import generate_star_chart_pdf
@@ -9,9 +9,9 @@ from .services.advertising import generate_advertising_campaign
 from django.utils.html import format_html
 from django.urls import path, reverse
 from django.shortcuts import render, redirect
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
-from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
+from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, Http404
 import csv
 
 from django.utils.dateparse import parse_date
@@ -53,7 +53,7 @@ class EventVolunteerInline(admin.TabularInline):
     @admin.display(description="PFSP")
     def pfsp_status(self, obj):
         if not obj or not obj.volunteer_id:
-            return "—"
+            return "â€”"
 
         if obj.volunteer.cleared_by_pfsp:
             return format_html(
@@ -65,7 +65,7 @@ class EventVolunteerInline(admin.TabularInline):
                 'color:#0f5132;'
                 'font-weight:600;'
                 '">{}</span>',
-                "✓ PFSP",
+                "âœ“ PFSP",
             )
 
         return format_html(
@@ -305,6 +305,8 @@ class PartnerAdmin(admin.ModelAdmin):
 
     ordering = ("partner_name",)
 
+    class Media:
+        js = ("outreach/js/partner_admin.js",)
 
 @admin.register(Volunteer)
 class VolunteerAdmin(admin.ModelAdmin):
@@ -331,11 +333,38 @@ class VolunteerAdmin(admin.ModelAdmin):
 
 @admin.register(ScheduledEvent)
 class ScheduledEventAdmin(admin.ModelAdmin):
+
+    def get_form(self, request, obj=None, **kwargs):
+        form_class = super().get_form(request, obj, **kwargs)
+
+        event_type_field = form_class.base_fields.get("event_title_type")
+
+        if event_type_field is not None:
+            active_types = {
+                "STAR_PARTY",
+                "SOLAR_OUTREACH",
+                "STEAM_EVENT",
+                "CUSTOM",
+            }
+
+            # Preserve the retired type when editing an existing event.
+            if obj is not None:
+                active_types.add(obj.event_title_type)
+
+            event_type_field.choices = [
+                (value, label)
+                for value, label in ScheduledEvent.EVENT_TITLE_CHOICES
+                if value in active_types
+            ]
+
+        return form_class
+
     list_display = (
         "event_name",
         "partner",
         "event_date",
         "status",
+        "show_on_public_website",
         "advertising_radius_miles",
         "advertise_to_full_service_area",
         "advertising_campaign_link",
@@ -359,6 +388,7 @@ class ScheduledEventAdmin(admin.ModelAdmin):
     list_filter = (
         "status",
         "date_confirmed",
+        "show_on_public_website",
         "event_title_type",
         "event_date",
         ("partner", admin.RelatedOnlyFieldListFilter),
@@ -390,6 +420,7 @@ class ScheduledEventAdmin(admin.ModelAdmin):
         "sunset_time",
         "civil_dusk_time",
         "nautical_dusk_time",
+        "moonrise_time",
         "moon_illumination",
         "moon_phase",
         "suggested_talk_start_time",
@@ -779,6 +810,9 @@ class ScheduledEventAdmin(admin.ModelAdmin):
 
     night_sky_chart_link.short_description = "Sky Chart"
     change_list_template = "admin/outreach/scheduledevent/change_list.html"
+    change_form_template = "admin/outreach/scheduledevent/change_form.html"
+    class Media:
+        js = ("outreach/js/scheduled_event_admin.js",)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -796,9 +830,49 @@ class ScheduledEventAdmin(admin.ModelAdmin):
                 ),
                 name="outreach_scheduledevent_generate_advertising",
             ),
+            path(
+                "<int:event_id>/print-summary/",
+                self.admin_site.admin_view(
+                    self.print_event_summary_view
+                ),
+                name="outreach_scheduledevent_print_summary",
+            ),
         ]
 
         return custom_urls + urls
+
+    def print_event_summary_view(self, request, event_id):
+        event = self.get_object(request, event_id)
+
+        if event is None:
+            raise Http404("Scheduled event not found.")
+
+        if not self.has_view_or_change_permission(request, event):
+             raise PermissionDenied
+
+        volunteers = (
+            EventVolunteer.objects
+            .filter(event=event)
+            .select_related("volunteer")
+            .order_by(
+                "volunteer__last_name",
+                "volunteer__first_name",
+            )
+        )
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Event Summary: {event.event_name}",
+            "event": event,
+            "volunteers": volunteers,
+            "volunteer_count": volunteers.count(),
+        }
+
+        return render(
+            request,
+            "admin/outreach/scheduledevent/print_summary.html",
+            context,
+        )
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -905,6 +979,29 @@ class ScheduledEventAdmin(admin.ModelAdmin):
                 args=[suggestion.pk],
             )
 
+            # Calculate moonrise for the suggested event's date and location.
+            suggestion.calendar_moonrise = "â€”"
+
+            if (
+                suggestion.suggested_date
+                and suggestion.partner
+                and suggestion.partner.latitude is not None
+                and suggestion.partner.longitude is not None
+            ):
+                moonrise = calculate_moonrise(
+                    event_date=suggestion.suggested_date,
+                    latitude=suggestion.partner.latitude,
+                    longitude=suggestion.partner.longitude,
+                    timezone_name=suggestion.partner.timezone,
+                )
+
+                if moonrise is not None:
+                    suggestion.calendar_moonrise = (
+                        moonrise.strftime("%I:%M %p").lstrip("0")
+                    )
+                else:
+                    suggestion.calendar_moonrise = "No moonrise"
+
             suggestions_by_date.setdefault(
                 suggestion.suggested_date,
                 [],
@@ -947,15 +1044,15 @@ class ScheduledEventAdmin(admin.ModelAdmin):
                 )
 
                 if illumination < 12:
-                    moon_icon = "🌑"
+                    moon_icon = "ðŸŒ‘"
                 elif illumination < 37:
-                    moon_icon = "🌒"
+                    moon_icon = "ðŸŒ’"
                 elif illumination < 62:
-                    moon_icon = "🌓"
+                    moon_icon = "ðŸŒ“"
                 elif illumination < 87:
-                    moon_icon = "🌔"
+                    moon_icon = "ðŸŒ”"
                 else:
-                    moon_icon = "🌕"
+                    moon_icon = "ðŸŒ•"
 
                 week.append(
                     {
@@ -1062,11 +1159,60 @@ class AstronomicalTargetAdmin(admin.ModelAdmin):
 
 @admin.register(SuggestedEvent)
 class SuggestedEventAdmin(admin.ModelAdmin):
+
+    change_list_template = "admin/outreach/suggestedevent/change_list.html"
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "print/",
+                self.admin_site.admin_view(self.print_suggestions),
+                name="outreach_suggestedevent_print",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def print_suggestions(self, request):
+        changelist = self.get_changelist_instance(request)
+
+        suggestions = (
+            changelist.get_queryset(request)
+            .select_related("partner", "scheduler_run")
+            .order_by("suggested_date", "start_time")
+        )
+
+        for suggestion in suggestions:
+            suggestion.print_moonrise = self.moonrise_display(suggestion)
+
+            if suggestion.suggested_date:
+                moon_data = calculate_moon_info(
+                    event_date=suggestion.suggested_date,
+                    timezone_name=suggestion.partner.timezone,
+                )
+                suggestion.print_moon_illumination = moon_data["moon_illumination"]
+            else:
+                suggestion.print_moon_illumination = None
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Suggested Outreach Events",
+            "suggestions": suggestions,
+            "total_count": suggestions.count(),
+            "printed_at": datetime.now(),
+        }
+
+        return render(
+            request,
+            "admin/outreach/suggestedevent/print_list.html",
+            context,
+        )
+
     list_display = (
         "partner",
         "scheduler_run",
         "suggested_date",
         "sunset_time",
+        "moonrise_display",
         "start_time",
         "end_time",
         "status",
@@ -1094,6 +1240,7 @@ class SuggestedEventAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         "sunset_time",
+        "moonrise_display",
         "start_time",
         "end_time",
         "created_at",
@@ -1103,6 +1250,28 @@ class SuggestedEventAdmin(admin.ModelAdmin):
         "approve_suggestions",
         "reject_suggestions",
     )
+
+    @admin.display(description="Moonrise")
+    def moonrise_display(self, obj):
+        if not obj or not obj.pk or not obj.suggested_date or not obj.partner_id:
+            return "â€”"
+
+        partner = obj.partner
+
+        if partner.latitude is None or partner.longitude is None:
+            return "Unavailable"
+
+        moonrise = calculate_moonrise(
+            event_date=obj.suggested_date,
+            latitude=partner.latitude,
+            longitude=partner.longitude,
+            timezone_name=partner.timezone,
+        )
+
+        if moonrise is None:
+            return "No moonrise"
+
+        return moonrise.strftime("%I:%M %p").lstrip("0")
 
     @admin.action(description="Approve selected suggestions and create scheduled events")
     def approve_suggestions(self, request, queryset):
@@ -1726,7 +1895,7 @@ class AdvertisingCampaignAdmin(admin.ModelAdmin):
     @admin.display(description="Time Remaining")
     def estimated_time_remaining(self, obj):
         if not obj or not obj.pk:
-            return "—"
+            return "â€”"
 
         return self._format_minutes(
             obj.estimated_remaining_minutes

@@ -1,0 +1,17 @@
+
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+
+    {% if original %}
+        <li>
+            <a href="{% url 'admin:outreach_scheduledevent_print_summary' original.pk %}"
+               target="_blank"
+               rel="noopener noreferrer">
+                Print Event Summary
+            </a>
+        </li>
+    {% endif %}
+{% endblock %}
